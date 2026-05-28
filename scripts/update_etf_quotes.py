@@ -40,7 +40,14 @@ EM_REQUEST_HEADERS = {
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
     "Referer": "https://quote.eastmoney.com/",
+    "Connection": "close",
 }
+
+# push2 直连常被 RST；push2delay 为同口径延迟行情，优先使用。
+EM_QUOTE_HOSTS = (
+    "push2delay.eastmoney.com",
+    "push2.eastmoney.com",
+)
 
 BATCH_SIZE = 80
 BATCH_SLEEP_SEC = 0.25
@@ -51,24 +58,12 @@ DEFAULT_ETF_JSON = Path.home() / "Downloads" / "etf.json"
 
 
 def secid_for_etf(code: str) -> str:
+    """东方财富 secid：沪 1.{code}，深 0.{code}。"""
     c = code.strip()
-    if c.startswith(
-        (
-            "159",
-            "160",
-            "161",
-            "162",
-            "163",
-            "164",
-            "165",
-            "166",
-            "167",
-            "168",
-            "169",
-        )
-    ):
-        return f"0.{c}"
-    return f"1.{c}"
+    # 沪：6 开头 A 股（含 688/689 科创板）、5 开头 ETF/基金等；其余（0/2/3/159 等）为深。
+    if c.startswith(("5", "6")):
+        return f"1.{c}"
+    return f"0.{c}"
 
 
 def fetch_json(url: str, timeout: int = 30) -> dict[str, Any]:
@@ -87,24 +82,26 @@ def fetch_prices_batch(secids: list[str]) -> dict[str, float]:
             "ut": "fa5fd1943c7b386f172d6893dbfba10b",
         }
     )
-    url = f"https://push2.eastmoney.com/api/qt/ulist.np/get?{q}"
+    path = f"/api/qt/ulist.np/get?{q}"
     last_err: Exception | None = None
-    for attempt in range(FETCH_RETRIES):
-        try:
-            j = fetch_json(url)
-            data = j.get("data") or {}
-            diff = data.get("diff") or []
-            out: dict[str, float] = {}
-            for row in diff:
-                code = str(row.get("f12", "")).strip()
-                px = row.get("f2")
-                if not code or px is None:
-                    continue
-                out[code] = float(px)
-            return out
-        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, ValueError) as e:
-            last_err = e
-            time.sleep(min(6.0, 0.5 * (2**attempt)))
+    for host in EM_QUOTE_HOSTS:
+        url = f"https://{host}{path}"
+        for attempt in range(FETCH_RETRIES):
+            try:
+                j = fetch_json(url)
+                data = j.get("data") or {}
+                diff = data.get("diff") or []
+                out: dict[str, float] = {}
+                for row in diff:
+                    code = str(row.get("f12", "")).strip()
+                    px = row.get("f2")
+                    if not code or px is None:
+                        continue
+                    out[code] = float(px)
+                return out
+            except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, ValueError) as e:
+                last_err = e
+                time.sleep(min(6.0, 0.5 * (2**attempt)))
     raise RuntimeError(f"批量拉价失败 {secids[:3]}…: {last_err}")
 
 

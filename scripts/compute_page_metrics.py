@@ -84,24 +84,11 @@ def _parse_iso(s: str) -> date:
 
 
 def secid_for_etf(code: str) -> str:
+    """东方财富 secid：沪 1.{code}，深 0.{code}。"""
     c = code.strip()
-    if c.startswith(
-        (
-            "159",
-            "160",
-            "161",
-            "162",
-            "163",
-            "164",
-            "165",
-            "166",
-            "167",
-            "168",
-            "169",
-        )
-    ):
-        return f"0.{c}"
-    return f"1.{c}"
+    if c.startswith(("5", "6")):
+        return f"1.{c}"
+    return f"0.{c}"
 
 
 def fetch_json(url: str, timeout: int = 60) -> dict[str, Any]:
