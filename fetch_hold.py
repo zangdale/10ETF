@@ -434,9 +434,22 @@ def main() -> int:
     hist = hist_dir / f"{date.today().isoformat()}.json"
     latest.write_text(text, encoding="utf-8")
     hist.write_text(text, encoding="utf-8")
+    write_hold_index(hist_dir)
     print(f"Wrote {latest} ({len(snapshot['items'])} items)")
     print(f"Wrote {hist}")
     return 0
+
+
+def write_hold_index(hist_dir: Path) -> None:
+    dates = sorted(
+        p.stem
+        for p in hist_dir.glob("*.json")
+        if p.name != "index.json" and len(p.stem) == 10 and p.stem[4:5] == "-"
+    )
+    hist_dir.joinpath("index.json").write_text(
+        json.dumps({"dates": dates}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":

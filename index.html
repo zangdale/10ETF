@@ -104,6 +104,26 @@
         }
         .brand-sep { color: var(--text-dim); margin: 0 4px; }
         .brand-sub { color: var(--gold); font-weight: 600; }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-links a {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.78rem;
+            white-space: nowrap;
+        }
+        .nav-links a:hover { color: var(--gold); }
+        .nav-links a.active {
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.45);
+            background: var(--gold-dim);
+        }
         .topnav-meta {
             margin-left: auto;
             display: flex;
@@ -305,6 +325,10 @@
                 <span>10ETF 持仓</span>
                 <span class="brand-sep">·</span>
                 <span class="brand-sub">实时清单</span>
+            </div>
+            <div class="nav-links" aria-label="栏目">
+                <a href="index.html" class="active" aria-current="page">当前持仓</a>
+                <a href="history.html">历史持仓</a>
             </div>
             <div class="topnav-meta">
                 <div class="topnav-chip">

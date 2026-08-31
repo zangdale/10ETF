@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="color-scheme" content="dark">
+    <title>10ETF 历史持仓</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --border: #1e2d45;
+            --gold: #c9a84c;
+            --gold-dim: rgba(201, 168, 76, 0.15);
+            --teal: #3b8a8a;
+            --text-primary: #e8edf5;
+            --text-secondary: #8896ab;
+            --text-dim: #5a6678;
+            --overlay-nav-bg: rgba(10, 14, 23, 0.85);
+            --overlay-grid: rgba(59, 138, 138, 0.03);
+            --radius-2xl: 12px;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+            --container-max: 1200px;
+            --container-pad: 24px;
+            --nav-height: 56px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 15px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            padding-top: calc(var(--nav-height) + var(--safe-top));
+            padding-bottom: max(16px, var(--safe-bottom));
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(var(--overlay-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--overlay-grid) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+        }
+        .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+        .topnav {
+            position: fixed;
+            inset: 0 0 auto 0;
+            min-height: var(--nav-height);
+            height: auto;
+            padding-top: var(--safe-top);
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+            background: var(--overlay-nav-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+        .topnav-inner {
+            max-width: var(--container-max);
+            min-height: var(--nav-height);
+            margin: 0 auto;
+            padding: 10px var(--container-pad);
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .brand {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 8px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-size: 0.78rem;
+            color: var(--text-primary);
+        }
+        .brand-sep { color: var(--text-dim); margin: 0 4px; }
+        .brand-sub { color: var(--gold); font-weight: 600; }
+        .nav-links { display: flex; align-items: center; gap: 8px; }
+        .nav-links a {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.78rem;
+            white-space: nowrap;
+        }
+        .nav-links a:hover { color: var(--gold); }
+        .nav-links a.active {
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.45);
+            background: var(--gold-dim);
+        }
+        .topnav-meta {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .topnav-chip {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-card);
+            white-space: nowrap;
+        }
+        .topnav-chip span.label {
+            display: block;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+        .topnav-chip span.val {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--gold);
+            font-weight: 600;
+        }
+        .container {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 28px var(--container-pad) 72px;
+            padding-bottom: max(72px, calc(var(--safe-bottom) + 48px));
+            position: relative;
+            z-index: 1;
+        }
+        .panel { margin-bottom: 32px; }
+        .panel-head {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            margin-bottom: 16px;
+        }
+        .panel-head .accent-line {
+            width: 48px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+            align-self: center;
+        }
+        .panel-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            margin: 0;
+        }
+        .panel-sub { font-size: 0.78rem; color: var(--text-dim); }
+        .range-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 14px;
+            margin-bottom: 18px;
+        }
+        .range-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.78rem;
+        }
+        .range-btn:hover { color: var(--gold); }
+        .range-btn.active {
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.45);
+            background: var(--gold-dim);
+        }
+        .range-dates {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-dim);
+            font-size: 0.78rem;
+        }
+        .range-dates input[type="date"] {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color-scheme: dark;
+        }
+        .hist-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            padding: 16px 14px 10px;
+        }
+        .chart-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding: 0 4px;
+        }
+        .chart-head a,
+        .chart-head .title {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .chart-head a:hover { color: var(--gold); }
+        .chart-head .meta {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .state-msg {
+            padding: 28px 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+        }
+        @media (min-width: 641px) {
+            .topnav-inner { flex-wrap: nowrap; align-items: center; }
+            .brand { flex-shrink: 0; }
+        }
+        @media (max-width: 900px) {
+            .topnav-meta { margin-left: 0; width: 100%; }
+        }
+        @media (max-width: 640px) {
+            html { font-size: 14px; }
+            :root { --container-pad: 14px; }
+            .topnav { position: sticky; top: 0; }
+            body { padding-top: var(--safe-top); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="topnav" aria-label="页面导航">
+        <div class="topnav-inner">
+            <div class="brand">
+                <span>10ETF 持仓</span>
+                <span class="brand-sep">·</span>
+                <span class="brand-sub">历史</span>
+            </div>
+            <div class="nav-links" aria-label="栏目">
+                <a href="index.html">当前持仓</a>
+                <a href="history.html" class="active" aria-current="page">历史持仓</a>
+            </div>
+            <div class="topnav-meta">
+                <div class="topnav-chip">
+                    <span class="label">快照天数</span>
+                    <span class="val" id="nav-days">—</span>
+                </div>
+                <div class="topnav-chip">
+                    <span class="label">筛选区间</span>
+                    <span class="val" id="nav-range">全部</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="panel">
+            <div class="panel-head">
+                <span class="accent-line" aria-hidden="true"></span>
+                <h2 class="panel-title">历史持仓</h2>
+                <span class="panel-sub">账户曲线在上，下方为各 ETF 持仓数量 · 数据来自 etf_hold/yyyy-mm-dd.json</span>
+            </div>
+            <div class="range-bar">
+                <button type="button" class="range-btn active" data-range="all">全部</button>
+                <button type="button" class="range-btn" data-range="month">本月</button>
+                <button type="button" class="range-btn" data-range="year">本年</button>
+                <button type="button" class="range-btn" data-range="1y">一年</button>
+                <div class="range-dates">
+                    <label>从 <input type="date" id="range-from"></label>
+                    <label>至 <input type="date" id="range-to"></label>
+                </div>
+            </div>
+            <p id="hist-empty" class="state-msg" hidden>暂无历史快照，请先执行 make hold。</p>
+            <div id="summary-grid" class="hist-grid">
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <span class="title">总资产变化</span>
+                        <span class="meta" id="meta-acct-total">—</span>
+                    </div>
+                    <canvas id="chart-acct-total"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <span class="title">总浮动盈亏</span>
+                        <span class="meta" id="meta-acct-pnl">—</span>
+                    </div>
+                    <canvas id="chart-acct-pnl"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <span class="title">总浮动盈亏%</span>
+                        <span class="meta" id="meta-acct-pnl-pct">—</span>
+                    </div>
+                    <canvas id="chart-acct-pnl-pct"></canvas>
+                </div>
+            </div>
+            <div class="panel-head" style="margin-top: 28px;">
+                <span class="accent-line" aria-hidden="true"></span>
+                <h2 class="panel-title">分 ETF 持仓</h2>
+                <span class="panel-sub">纵轴为持仓数量</span>
+            </div>
+            <div id="hist-grid" class="hist-grid"></div>
+        </section>
+    </main>
+
+    <script>
+        const ETF_CODES = [
+            '561580', '511360', '159985', '515180', '511010',
+            '520870', '513650', '518680', '159307', '513870'
+        ];
+        const INVESTING_SLUG = { '511010': 'guotai-sse-deliverable-5-tb' };
+        const NAME_OVERRIDE = { '515180': '中证红利' };
+        const RANGE_LABEL = { all: '全部', month: '本月', year: '本年', '1y': '一年', custom: '自定义' };
+        const LINE_COLORS = [
+            'rgba(201, 168, 76, 0.95)',
+            'rgba(59, 138, 138, 0.95)',
+            'rgba(138, 180, 200, 0.95)',
+            'rgba(227, 193, 99, 0.9)',
+            'rgba(148, 120, 200, 0.9)',
+            'rgba(76, 175, 80, 0.85)',
+            'rgba(244, 67, 54, 0.75)',
+            'rgba(255, 152, 0, 0.85)',
+            'rgba(33, 150, 243, 0.85)',
+            'rgba(156, 39, 176, 0.8)'
+        ];
+
+        function ymd(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+        function investingUrl(code) {
+            const slug = INVESTING_SLUG[code] || code;
+            return `https://cn.investing.com/etfs/${encodeURIComponent(slug)}`;
+        }
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        function rangeBounds(key) {
+            const now = new Date();
+            const end = ymd(now);
+            if (key === 'month') {
+                return { from: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, to: end };
+            }
+            if (key === 'year') {
+                return { from: `${now.getFullYear()}-01-01`, to: end };
+            }
+            if (key === '1y') {
+                const s = new Date(now);
+                s.setFullYear(s.getFullYear() - 1);
+                return { from: ymd(s), to: end };
+            }
+            return { from: '', to: '' };
+        }
+
+        let seriesByCode = {};
+        let accountByDate = {};
+        let names = {};
+        let allDates = [];
+        let activeRange = 'all';
+        const charts = {};
+
+        function displayName(code) {
+            return NAME_OVERRIDE[code] || names[code] || code;
+        }
+
+        function fillOf(border) {
+            return border.replace(/[\d.]+\)$/, '0.12)');
+        }
+
+        function lastFinite(values) {
+            for (let i = values.length - 1; i >= 0; i--) {
+                if (Number.isFinite(values[i])) return values[i];
+            }
+            return NaN;
+        }
+
+        function yen(n) {
+            if (!Number.isFinite(n)) return '—';
+            return '¥ ' + Number(n).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+        }
+
+        function filterDates() {
+            const fromEl = document.getElementById('range-from');
+            const toEl = document.getElementById('range-to');
+            const from = fromEl.value;
+            const to = toEl.value;
+            return allDates.filter((d) => (!from || d >= from) && (!to || d <= to));
+        }
+
+        function drawLine(canvasId, values, dates, opts) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            if (charts[canvasId]) charts[canvasId].destroy();
+            const border = opts.color;
+            charts[canvasId] = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        data: values.map((v) => (Number.isFinite(v) ? v : null)),
+                        borderColor: border,
+                        backgroundColor: fillOf(border),
+                        fill: true,
+                        tension: 0.25,
+                        spanGaps: true,
+                        pointRadius: dates.length <= 2 ? 4 : 2,
+                        pointHoverRadius: 5,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2.8,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => opts.tooltip(ctx.parsed.y)
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#8896ab', maxRotation: 0, autoSkip: true, font: { size: 10 } },
+                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
+                        },
+                        y: {
+                            beginAtZero: !!opts.beginAtZero,
+                            ticks: {
+                                color: '#8896ab',
+                                font: { size: 10 },
+                                callback: opts.tick || ((v) => v)
+                            },
+                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function drawCharts() {
+            const dates = filterDates();
+            document.getElementById('nav-range').textContent = RANGE_LABEL[activeRange] || '自定义';
+
+            const totals = dates.map((d) => accountByDate[d]?.total);
+            const pnls = dates.map((d) => accountByDate[d]?.pnl);
+            const pcts = dates.map((d) => accountByDate[d]?.pnlPct);
+            document.getElementById('meta-acct-total').textContent = yen(lastFinite(totals));
+            document.getElementById('meta-acct-pnl').textContent = yen(lastFinite(pnls));
+            const lastPct = lastFinite(pcts);
+            document.getElementById('meta-acct-pnl-pct').textContent =
+                Number.isFinite(lastPct) ? lastPct.toFixed(2) + '%' : '—';
+
+            const yenTick = (v) => Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+            drawLine('chart-acct-total', totals, dates, {
+                color: 'rgba(201, 168, 76, 0.95)',
+                tooltip: (y) => '总资产 ' + yen(y),
+                tick: yenTick
+            });
+            drawLine('chart-acct-pnl', pnls, dates, {
+                color: 'rgba(244, 67, 54, 0.75)',
+                tooltip: (y) => '浮动盈亏 ' + yen(y),
+                tick: yenTick
+            });
+            drawLine('chart-acct-pnl-pct', pcts, dates, {
+                color: 'rgba(59, 138, 138, 0.95)',
+                tooltip: (y) => Number.isFinite(y) ? '浮动盈亏% ' + y.toFixed(2) + '%' : '—',
+                tick: (v) => Number(v).toFixed(1) + '%'
+            });
+
+            ETF_CODES.forEach((code, i) => {
+                const map = seriesByCode[code] || {};
+                const values = dates.map((d) => (d in map ? map[d] : 0));
+                const last = values.length ? values[values.length - 1] : 0;
+                const meta = document.getElementById(`meta-${code}`);
+                if (meta) meta.textContent = dates.length ? last.toLocaleString('zh-CN') : '—';
+                drawLine(`chart-${code}`, values, dates, {
+                    color: LINE_COLORS[i % LINE_COLORS.length],
+                    tooltip: (y) => '持仓 ' + Number(y).toLocaleString('zh-CN'),
+                    beginAtZero: true,
+                    tick: (v) => Number(v).toLocaleString('zh-CN')
+                });
+            });
+        }
+
+        function setRange(key, { syncInputs = true } = {}) {
+            activeRange = key;
+            document.querySelectorAll('.range-btn').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.range === key);
+            });
+            if (syncInputs) {
+                const b = rangeBounds(key);
+                document.getElementById('range-from').value = b.from;
+                document.getElementById('range-to').value = b.to;
+            }
+            drawCharts();
+        }
+
+        function buildGrid() {
+            const grid = document.getElementById('hist-grid');
+            grid.innerHTML = ETF_CODES.map((code) => `
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <a href="${investingUrl(code)}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayName(code))}[${code}]</a>
+                        <span class="meta" id="meta-${code}">—</span>
+                    </div>
+                    <canvas id="chart-${code}"></canvas>
+                </div>
+            `).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof Chart !== 'undefined') {
+                Chart.defaults.color = '#8896ab';
+                Chart.defaults.borderColor = '#1e2d45';
+                Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
+            }
+            document.querySelectorAll('.range-btn').forEach((btn) => {
+                btn.addEventListener('click', () => setRange(btn.dataset.range));
+            });
+            const fromEl = document.getElementById('range-from');
+            const toEl = document.getElementById('range-to');
+            const onCustom = () => {
+                activeRange = 'custom';
+                document.querySelectorAll('.range-btn').forEach((b) => b.classList.remove('active'));
+                drawCharts();
+            };
+            fromEl.addEventListener('change', onCustom);
+            toEl.addEventListener('change', onCustom);
+
+            let dates = [];
+            try {
+                const r = await fetch('etf_hold/index.json', { cache: 'no-store' });
+                if (r.ok) {
+                    const d = await r.json();
+                    dates = Array.isArray(d.dates) ? d.dates : (Array.isArray(d) ? d : []);
+                }
+            } catch { /* ignore */ }
+
+            const empty = document.getElementById('hist-empty');
+            const summary = document.getElementById('summary-grid');
+            if (!dates.length) {
+                empty.hidden = false;
+                summary.hidden = true;
+                document.getElementById('nav-days').textContent = '0';
+                return;
+            }
+
+            const payloads = await Promise.all(dates.map(async (day) => {
+                try {
+                    const r = await fetch(`etf_hold/${day}.json`, { cache: 'no-store' });
+                    if (!r.ok) return null;
+                    return { day, data: await r.json() };
+                } catch {
+                    return null;
+                }
+            }));
+
+            allDates = [];
+            seriesByCode = Object.fromEntries(ETF_CODES.map((c) => [c, {}]));
+            accountByDate = {};
+            names = {};
+            for (const row of payloads) {
+                if (!row || !row.data) continue;
+                const day = row.data.date || row.day;
+                allDates.push(day);
+                const items = Array.isArray(row.data.items) ? row.data.items : [];
+                const costSum = items.reduce((s, it) => s + (Number(it.cost_value) || 0), 0);
+                const pnl = Number(row.data.float_profit);
+                accountByDate[day] = {
+                    total: Number(row.data.total),
+                    pnl,
+                    pnlPct: costSum > 0 && Number.isFinite(pnl) ? (pnl / costSum) * 100 : NaN
+                };
+                for (const it of items) {
+                    const code = String(it.code || '').trim();
+                    if (!seriesByCode[code]) continue;
+                    seriesByCode[code][day] = Number(it.amount) || 0;
+                    const n = NAME_OVERRIDE[code] || String(it.name || '').trim();
+                    if (n) names[code] = n;
+                }
+            }
+            allDates = [...new Set(allDates)].sort();
+            document.getElementById('nav-days').textContent = String(allDates.length);
+            if (!allDates.length) {
+                empty.hidden = false;
+                return;
+            }
+            empty.hidden = true;
+            buildGrid();
+            setRange('all');
+        });
+    </script>
+</body>
+</html>

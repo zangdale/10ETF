@@ -19,7 +19,6 @@ env/
 # Local outputs
 etf_meta.json
 etf_metrics.json
-etf_hold/*.json
 .adb/
 .tiingo_meta.json
 *.csv
