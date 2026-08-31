@@ -1,68 +1,28 @@
-# 20ETF
+# 10ETF
 
-本项目为 **20 只 ETF** 在固定长区间上的回测与最优配置展示：单页报告 `index.html`（深色主题、图表与可排序表格）。
+单页持仓展示：`index.html` 读取根目录 **`etf_hold.json`**。
 
-## 主要内容
+## 拉取持仓
 
-- **`index.html`**：组合核心指标、图表（Chart.js）、大类配置、20 只 ETF 明细（含成立日期、回测算术字段等）。若同目录存在 **`etf_metrics.json`**（由 `compute_page_metrics.py` 生成），页面加载时会合并日频指标。数据来源与口径以页面内「风险提示」为准。
-- **`scripts/fetch_eastmoney_etf_metadata.py`**：从东方财富·天天基金公开页面拉取各代码的 **场内简称** 与 **成立日期**，用于与报告中的产品信息交叉核对（不重新计算收益、回撤、波动、夏普等指标）。
-- **`scripts/compute_page_metrics.py`** 与 **`scripts/etf_universe.json`**：每日拉取东财 ETF 日 K，计算表格与组合摘要并写出 `etf_metrics.json`。
+`.env` 中配置 `ADB_PATH`（可选 `ADB_DEVICE`）。若配置了 `TIINGO_API_KEY`，会额外拉取 Tiingo 名称。手机/模拟器已打开同花顺交易页时：
+
+```bash
+make hold
+```
+
+配置了 `TIINGO_API_KEY` 时，`make hold` 会请求 Tiingo 并写入 `tiingo_name`；未配置则跳过。页面图例与名称列使用 `name`（同花顺简称），显示为 `名称[代码]`。`515180` 固定为「中证红利」。
+
+- `etf_hold.json`：最新快照（页面数据源）
+- `etf_hold/yyyy-mm-dd.json`：当日历史（同日多次运行会覆盖）
 
 ## 本地预览
 
-在项目根目录执行：
-
 ```bash
-python3 -m http.server 8080
+make serve
 ```
 
-浏览器打开 `http://localhost:8080/index.html`。**不要**用 `file://` 直接双击打开，以便脚本与外部 CDN（Chart.js 等）正常加载。
+默认打开 `http://127.0.0.1:8080/index.html`。本地服务会监视 `index.html`、`etf_hold.json`，保存后浏览器自动刷新（不要用 `file://`）。换端口：`make serve PORT=9000`。若 8080 已被旧的 `http.server` 占用，先结束该进程或换端口，否则没有热更新。
 
-## 核对 ETF 公开档案
+## 部署
 
-默认使用与 `index.html` 一致的 20 个代码：
-
-```bash
-python3 scripts/fetch_eastmoney_etf_metadata.py --report-start 2006-04-29 -o etf_meta.json
-```
-
-导出到标准输出：
-
-```bash
-python3 scripts/fetch_eastmoney_etf_metadata.py --report-start 2006-04-29
-```
-
-自定义代码列表（一行一个 6 位代码，`#` 行为注释）：
-
-```bash
-python3 scripts/fetch_eastmoney_etf_metadata.py --codes codes.txt
-```
-
-## 每日刷新页面收益指标（日频 K 线）
-
-`scripts/compute_page_metrics.py` 从东方财富拉取各 ETF **前复权日 K**，按 `scripts/etf_universe.json` 的权重计算：
-
-- 单只：区间累计收益、最大回撤、年化波动率、夏普（无风险利率 0）  
-- 组合：等权与「最优权重」**买入持有**曲线（全体公共交易日）、期末资产、累计收益、复合年化、回撤与回撤时长摘要  
-
-口径为**可交易日线**，与页面内嵌的「理论推算 / 指数拼接」不同；生成 `etf_metrics.json` 后，用 HTTP 打开 `index.html` 会自动合并到表格、指标卡与主图。
-
-```bash
-python3 scripts/compute_page_metrics.py --report-start 2006-04-29 -o etf_metrics.json
-python3 -m http.server 8080
-# 浏览器打开 http://localhost:8080/index.html（勿用 file://，否则无法 fetch JSON）
-```
-
-可与 cron 或 GitHub Actions 定时任务每日运行；`etf_metrics.json` 默认已列入 `.gitignore`，部署前如需静态携带请自行复制到站点根目录。
-
-仅需 Python 3 标准库（`fetch_eastmoney_etf_metadata.py` 与 `compute_page_metrics.py`），**需联网**。
-
-## CI 部署（Cloudflare Pages）
-
-仓库含 GitHub Actions：推送时在 `dist/` 中复制根目录全部 `*.html` 并由 Wrangler 部署到 Cloudflare Pages（项目名示例：`20etf`）。
-
-需在仓库 **Secrets** 中配置：`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`。具体绑定以你的工作区为准。
-
-## 免责声明
-
-本仓库中的数值与图表用于研究与展示，不构成投资建议。使用前请阅读 `index.html` 中的风险提示及产品法律文件。
+GitHub Actions 将根目录 `*.html` 与 `etf_hold.json` 复制到 `dist/` 后部署 Cloudflare Pages（项目名示例：`10etf`）。

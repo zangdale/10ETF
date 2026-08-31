@@ -1,0 +1,131 @@
+{
+  "fetched_at": "2026-08-31T17:48:33",
+  "date": "2026-08-31",
+  "position": 0.0,
+  "total": 305017.82,
+  "float_profit": 8633.86,
+  "total_value": 295416.2,
+  "available": 600.61,
+  "items": [
+    {
+      "code": "518680",
+      "name": "金ETF",
+      "tiingo_name": "Fullgoal Fund Management Co Ltd",
+      "amount": 300,
+      "available": 300,
+      "cost": 8.529,
+      "cost_value": 2558.7,
+      "price": 9.563,
+      "market_value": 2868.9,
+      "pnl": 310.2
+    },
+    {
+      "code": "520870",
+      "name": "巴西ETF",
+      "tiingo_name": "E Fund Itau IBOVESPA Exchange Traded Fund (QDII)",
+      "amount": 21000,
+      "available": 21000,
+      "cost": 1.055,
+      "cost_value": 22155.0,
+      "price": 1.085,
+      "market_value": 22785.0,
+      "pnl": 630.0
+    },
+    {
+      "code": "513870",
+      "name": "纳指指数",
+      "tiingo_name": "Fullgoal Fund Management Co Ltd",
+      "amount": 2200,
+      "available": 2200,
+      "cost": 1.742,
+      "cost_value": 3832.4,
+      "price": 2.061,
+      "market_value": 4534.2,
+      "pnl": 701.8
+    },
+    {
+      "code": "513650",
+      "name": "标普ETF",
+      "tiingo_name": "China Southern Asset Management Co. Ltd",
+      "amount": 100,
+      "available": 100,
+      "cost": -2.064,
+      "cost_value": -206.4,
+      "price": 2.043,
+      "market_value": 204.3,
+      "pnl": 410.7
+    },
+    {
+      "code": "511010",
+      "name": "国债ETF",
+      "tiingo_name": "Guotai Asset Management Company Ltd",
+      "amount": 300,
+      "available": 300,
+      "cost": 140.616,
+      "cost_value": 42184.8,
+      "price": 141.114,
+      "market_value": 42334.2,
+      "pnl": 149.4
+    },
+    {
+      "code": "511360",
+      "name": "短融ETF",
+      "tiingo_name": "HFT Investment Management Co. Ltd.",
+      "amount": 1200,
+      "available": 1200,
+      "cost": 113.615,
+      "cost_value": 136338.0,
+      "price": 113.867,
+      "market_value": 136640.4,
+      "pnl": 302.4
+    },
+    {
+      "code": "159307",
+      "name": "100红利",
+      "tiingo_name": "Bosera CSI Dividend Low Volatility 100 Index ETF",
+      "amount": 35700,
+      "available": 35200,
+      "cost": 1.019,
+      "cost_value": 36378.3,
+      "price": 1.029,
+      "market_value": 36735.3,
+      "pnl": 357.0
+    },
+    {
+      "code": "561580",
+      "name": "央企红利",
+      "tiingo_name": "HuataiPineBridge Fund Management Co Ltd",
+      "amount": 19500,
+      "available": 19500,
+      "cost": 1.156,
+      "cost_value": 22542.0,
+      "price": 1.275,
+      "market_value": 24862.5,
+      "pnl": 2320.5
+    },
+    {
+      "code": "515180",
+      "name": "中证红利",
+      "tiingo_name": "E Fund Management Company. Ltd",
+      "amount": 14300,
+      "available": 14300,
+      "cost": 1.342,
+      "cost_value": 19190.6,
+      "price": 1.468,
+      "market_value": 20992.4,
+      "pnl": 1801.8
+    },
+    {
+      "code": "159985",
+      "name": "豆粕ETF",
+      "tiingo_name": "China Asset Management Company. Ltd",
+      "amount": 1500,
+      "available": 1500,
+      "cost": 1.205,
+      "cost_value": 1807.5,
+      "price": 2.306,
+      "market_value": 3459.0,
+      "pnl": 1651.5
+    }
+  ]
+}
