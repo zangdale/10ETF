@@ -16,6 +16,7 @@ jobs:
         run: |
           mkdir dist
           cp *.html dist/
+          cp favicon*.png apple-touch-icon.png favicon.jpg dist/ 2>/dev/null || true
           test -f etf_hold.json && cp etf_hold.json dist/ || true
           if [ -d etf_hold ]; then mkdir -p dist/etf_hold && cp etf_hold/*.json dist/etf_hold/ 2>/dev/null || true; fi
       - name: Deploy

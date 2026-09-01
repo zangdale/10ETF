@@ -22,7 +22,7 @@ make hold
 make serve
 ```
 
-默认打开 `http://127.0.0.1:8080/index.html`。本地服务会监视 `index.html`、`etf_hold.json`，保存后浏览器自动刷新（不要用 `file://`）。换端口：`make serve PORT=9000`。若 8080 已被旧的 `http.server` 占用，先结束该进程或换端口，否则没有热更新。
+默认打开 `http://127.0.0.1:8080/index.html`，并**前台**运行 `serve.py`（Ctrl+C 结束）。若端口已被占用，会先结束占用进程再启动。换端口：`make serve PORT=9000`。不要用 `file://` 打开页面。
 
 ## 部署
 

@@ -21,13 +21,14 @@ hold:
 	@test -x "$(ADB_PATH)" || (echo "找不到可执行文件: $(ADB_PATH)" && exit 1)
 	python3 fetch_hold.py
 
-# 本地预览 index.html；监视 index.html / etf_hold.json，保存后自动刷新
+# 本地预览：前台运行 serve.py（Ctrl+C 结束）
 serve:
 	@echo "http://127.0.0.1:$(PORT)/index.html"
-	@if lsof -nP -iTCP:$(PORT) -sTCP:LISTEN >/dev/null 2>&1; then \
-		echo "端口 $(PORT) 已被占用，打开已有页面。热更新需由 python3 serve.py 提供；换端口：make serve PORT=9000"; \
-		python3 -c "import webbrowser; webbrowser.open('http://127.0.0.1:$(PORT)/index.html')"; \
-	else \
-		(sleep 0.4 && python3 -c "import webbrowser; webbrowser.open('http://127.0.0.1:$(PORT)/index.html')") & \
-		python3 serve.py $(PORT); \
+	@pids=$$(lsof -nP -tiTCP:$(PORT) -sTCP:LISTEN 2>/dev/null); \
+	if [ -n "$$pids" ]; then \
+		echo "端口 $(PORT) 已被占用，结束进程 $$pids 后前台启动"; \
+		kill $$pids 2>/dev/null || true; \
+		sleep 0.3; \
 	fi
+	@(sleep 0.4 && python3 -c "import webbrowser; webbrowser.open('http://127.0.0.1:$(PORT)/index.html')") &
+	python3 serve.py $(PORT)

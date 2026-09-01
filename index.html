@@ -6,6 +6,8 @@
     <meta name="theme-color" content="#0a0e17">
     <meta name="color-scheme" content="dark">
     <title>10ETF 持仓</title>
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -153,6 +155,28 @@
             color: var(--gold);
             font-weight: 600;
         }
+        .num-toggle {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            background: var(--bg-card);
+            flex-shrink: 0;
+        }
+        .num-toggle button {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 7px 10px;
+            font: inherit;
+            font-size: 0.72rem;
+            cursor: pointer;
+        }
+        .num-toggle button + button { border-left: 1px solid var(--border); }
+        .num-toggle button.active {
+            color: var(--gold);
+            background: var(--gold-dim);
+        }
         .container {
             max-width: var(--container-max);
             margin: 0 auto;
@@ -230,6 +254,27 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-2xl);
             padding: 20px 18px;
+            position: relative;
+        }
+        .chart-reset {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 2;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font: inherit;
+            font-size: 0.72rem;
+            cursor: pointer;
+        }
+        .chart-reset:hover { color: var(--gold); border-color: rgba(201, 168, 76, 0.45); }
+        .chart-reset:disabled {
+            opacity: 0.4;
+            cursor: default;
+            color: var(--text-dim);
         }
         .table-wrap {
             background: var(--bg-card);
@@ -245,7 +290,7 @@
         }
         .panel-table {
             width: 100%;
-            min-width: 880px;
+            min-width: 980px;
             border-collapse: collapse;
             font-size: 0.82rem;
         }
@@ -339,6 +384,10 @@
                     <span class="label">持仓只数</span>
                     <span class="val" id="nav-count">—</span>
                 </div>
+                <div class="num-toggle" role="group" aria-label="金额分位">
+                    <button type="button" data-group="wan">万分位</button>
+                    <button type="button" data-group="qian">千分位</button>
+                </div>
             </div>
         </div>
     </nav>
@@ -393,13 +442,14 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 id="sec-charts" class="panel-title">权重分布</h2>
-                <span class="panel-sub">仓位% = 现价×持仓 ÷ Σ(现价×持仓) × 100</span>
+                <span class="panel-sub">仓位% = 现价×持仓 ÷ Σ(现价×持仓) × 100 · 市值图点击左侧名称可隐藏，刷新可恢复</span>
             </div>
             <div class="charts-grid">
                 <div class="chart-container">
                     <canvas id="weightPieChart"></canvas>
                 </div>
                 <div class="chart-container">
+                    <button type="button" class="chart-reset" id="barChartReset" disabled>刷新</button>
                     <canvas id="weightBarChart"></canvas>
                 </div>
             </div>
@@ -409,7 +459,7 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 id="sec-table" class="panel-title">持仓明细</h2>
-                <span class="panel-sub">仓位% = 现价×持仓 ÷ Σ(现价×持仓) × 100 · 浮动盈亏% = (现价 − 成本) ÷ 成本 × 100 · 点击代码或名称打开英为财情 · 点击表头排序</span>
+                <span class="panel-sub">仓位% = 现价×持仓 ÷ Σ(现价×持仓) × 100 · 浮动盈亏 = 市值 − 成本合计 · 浮动盈亏% = (现价 − 成本) ÷ 成本 × 100 · 点击代码或名称打开英为财情 · 点击表头排序</span>
             </div>
             <div class="table-wrap">
                 <p id="table-empty" class="state-msg" hidden>暂无 etf_hold.json，请先执行 make hold。</p>
@@ -424,6 +474,7 @@
                             <th data-sort="market_value">市值</th>
                             <th data-sort="cost">成本</th>
                             <th data-sort="cost_value">成本合计</th>
+                            <th data-sort="pnl">浮动盈亏</th>
                             <th data-sort="pnl_pct">浮动盈亏%</th>
                             <th data-sort="weight">仓位%</th>
                         </tr>
@@ -447,9 +498,9 @@
             return `${n}[${r.code}]`;
         }
 
-        function codeFromChartLabel(label) {
+        function codeFromLabel(label) {
             const m = String(label).match(/\[([^\]]+)\]\s*$/);
-            return m ? m[1] : String(label);
+            return m ? m[1] : '';
         }
 
         function investingUrl(code) {
@@ -466,9 +517,28 @@
                 .replace(/"/g, '&quot;');
         }
 
+        const NUM_GROUP_KEY = '10etf-num-group';
+        let numGroup = localStorage.getItem(NUM_GROUP_KEY) === 'qian' ? 'qian' : 'wan';
+
+        function formatGrouped(n, fracDigits) {
+            if (!Number.isFinite(n)) return '—';
+            const size = numGroup === 'qian' ? 3 : 4;
+            const neg = n < 0;
+            const abs = Math.abs(n);
+            const s = fracDigits > 0 ? abs.toFixed(fracDigits) : String(Math.round(abs));
+            const [intRaw, frac] = s.split('.');
+            const parts = [];
+            for (let i = intRaw.length; i > 0; i -= size) {
+                parts.unshift(intRaw.slice(Math.max(0, i - size), i));
+            }
+            let out = parts.join(numGroup === 'qian' ? ',' : "'");
+            if (fracDigits > 0) out += '.' + frac;
+            return (neg ? '-' : '') + out;
+        }
+
         function yen(n) {
             if (!Number.isFinite(n)) return '—';
-            return '¥ ' + Number(n).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+            return '¥ ' + formatGrouped(n, 2);
         }
         const pct = (n, d = 1) => Number.isFinite(n) ? n.toFixed(d) + '%' : '—';
 
@@ -501,6 +571,7 @@
                     cost,
                     cost_value: costValue,
                     market_value: marketValue,
+                    pnl: marketValue - costValue,
                     pnl_pct: pnlPctFromCost(price, cost),
                     weight: 0
                 };
@@ -513,12 +584,16 @@
             return { rows, costSum, mvSum, payload };
         }
 
+        let lastPayload = null;
+        let lastCostSum = 0;
         let origin = [];
         let currentSortKey = 'id';
         let currentSortDir = 'asc';
         let renderData = [];
         let weightChart = null;
         let barChart = null;
+        let chartAllRows = [];
+        const hiddenBarCodes = new Set();
 
         function renderTable() {
             const body = document.getElementById('holdTableBody');
@@ -531,11 +606,12 @@
                     <td class="mono">${r.id}</td>
                     <td><a class="etf-link" href="${href}" target="_blank" rel="noopener noreferrer"><strong class="mono">${escapeHtml(r.code)}</strong></a></td>
                     <td><a class="etf-link" href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayLabel(r))}</a></td>
-                    <td class="mono">${r.amount.toLocaleString('zh-CN')}</td>
+                    <td class="mono">${formatGrouped(r.amount, 0)}</td>
                     <td class="mono">${r.price.toFixed(3)}</td>
                     <td class="mono">${yen(r.market_value)}</td>
                     <td class="mono">${r.cost.toFixed(3)}</td>
                     <td class="mono">${yen(r.cost_value)}</td>
+                    <td class="mono ${pnlClass(r.pnl)}">${yen(r.pnl)}</td>
                     <td class="mono ${pnlClass(r.pnl_pct)}">${pct(r.pnl_pct, 2)}</td>
                     <td class="mono">${r.weight.toFixed(2)}%</td>
                 `;
@@ -556,7 +632,7 @@
                 currentSortKey = key;
                 currentSortDir = 'asc';
             }
-            const nums = ['id', 'amount', 'price', 'cost', 'cost_value', 'market_value', 'pnl_pct', 'weight'];
+            const nums = ['id', 'amount', 'price', 'cost', 'cost_value', 'market_value', 'pnl', 'pnl_pct', 'weight'];
             renderData = [...origin].sort((a, b) => {
                 if (nums.includes(key)) {
                     const av = a[key];
@@ -600,7 +676,151 @@
             if (cls) pnlPctEl.classList.add(cls);
         }
 
-        function drawCharts(rows) {
+        function shareTooltipFor(sorted) {
+            return {
+                tooltip: {
+                    callbacks: {
+                        label(ctx) {
+                            const r = sorted[ctx.dataIndex];
+                            if (!r) return '';
+                            return [
+                                `持仓占比 ${r.weight.toFixed(2)}%`,
+                                `持仓金额 ${yen(r.market_value)}`
+                            ];
+                        }
+                    }
+                }
+            };
+        }
+
+        function visibleBarRows() {
+            const vis = [...chartAllRows]
+                .sort((a, b) => b.market_value - a.market_value)
+                .filter((r) => !hiddenBarCodes.has(r.code));
+            const mv = vis.reduce((s, r) => s + r.market_value, 0);
+            return vis.map((r) => ({
+                ...r,
+                weight: mv > 0 ? (r.market_value / mv) * 100 : 0
+            }));
+        }
+
+        function syncBarReset() {
+            const btn = document.getElementById('barChartReset');
+            if (btn) btn.disabled = hiddenBarCodes.size === 0;
+        }
+
+        function hideBarCode(code) {
+            if (!code || hiddenBarCodes.has(code)) return;
+            hiddenBarCodes.add(code);
+            drawBarChart();
+        }
+
+        function resetBarChart() {
+            hiddenBarCodes.clear();
+            drawBarChart();
+        }
+
+        function barClickIndex(chart, nativeEvt) {
+            if (!chart || !nativeEvt) return -1;
+            let x;
+            let y;
+            const helpers = Chart.helpers;
+            if (helpers && typeof helpers.getRelativePosition === 'function') {
+                const pos = helpers.getRelativePosition(nativeEvt, chart);
+                x = pos.x;
+                y = pos.y;
+            } else {
+                const rect = chart.canvas.getBoundingClientRect();
+                const sx = rect.width ? chart.width / rect.width : 1;
+                const sy = rect.height ? chart.height / rect.height : 1;
+                x = (nativeEvt.clientX - rect.left) * sx;
+                y = (nativeEvt.clientY - rect.top) * sy;
+            }
+            const yScale = chart.scales.y;
+            if (!yScale) return -1;
+            if (y < yScale.top || y > yScale.bottom) return -1;
+
+            // 点柱条：按命中元素隐藏
+            const hits = chart.getElementsAtEventForMode(
+                nativeEvt,
+                'nearest',
+                { intersect: true },
+                false
+            );
+            if (hits.length) return hits[0].index;
+
+            // 点左侧名称（或该行空白）：按 Y 轴刻度隐藏
+            const idx = yScale.getValueForPixel(y);
+            if (!Number.isFinite(idx)) return -1;
+            const i = Math.round(idx);
+            if (i < 0 || i >= chart.data.labels.length) return -1;
+            return i;
+        }
+
+        function onBarCanvasClick(nativeEvt) {
+            if (!barChart) return;
+            const i = barClickIndex(barChart, nativeEvt);
+            if (i < 0) return;
+            nativeEvt.preventDefault();
+            const label = barChart.data.labels[i];
+            const code = codeFromLabel(label);
+            if (code) hideBarCode(code);
+        }
+
+        function drawBarChart() {
+            const mq = typeof matchMedia !== 'undefined' && matchMedia('(max-width: 640px)').matches;
+            const bar = document.getElementById('weightBarChart');
+            if (!bar) return;
+            bar.removeEventListener('click', onBarCanvasClick);
+            if (barChart) barChart.destroy();
+            const sorted = visibleBarRows();
+            const titleStyle = {
+                display: true,
+                color: '#e8edf5',
+                font: { size: mq ? 12 : 14, weight: '600' }
+            };
+            barChart = new Chart(bar.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: sorted.map((r) => displayLabel(r)),
+                    datasets: [{
+                        label: '市值',
+                        data: sorted.map((r) => r.market_value),
+                        backgroundColor: 'rgba(201, 168, 76, 0.75)',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    aspectRatio: mq ? 0.55 : 0.85,
+                    plugins: {
+                        title: { ...titleStyle, text: '市值（现价×持仓）' },
+                        legend: { display: false },
+                        ...shareTooltipFor(sorted)
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#8896ab',
+                                callback: (v) => formatGrouped(Number(v), 0)
+                            },
+                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
+                        },
+                        y: {
+                            ticks: { color: '#8896ab', autoSkip: false, font: { size: mq ? 8 : 9 } },
+                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
+                        }
+                    }
+                }
+            });
+            bar.style.cursor = 'pointer';
+            bar.addEventListener('click', onBarCanvasClick);
+            syncBarReset();
+        }
+
+        function drawCharts(rows, { resetHidden = true } = {}) {
             const mq = typeof matchMedia !== 'undefined' && matchMedia('(max-width: 640px)').matches;
             const titleStyle = {
                 display: true,
@@ -620,18 +840,10 @@
                 'rgba(156, 39, 176, 0.5)'
             ];
             const pie = document.getElementById('weightPieChart');
-            const bar = document.getElementById('weightBarChart');
             if (weightChart) weightChart.destroy();
-            if (barChart) barChart.destroy();
+            chartAllRows = [...rows];
+            if (resetHidden) hiddenBarCodes.clear();
             const sorted = [...rows].sort((a, b) => b.market_value - a.market_value);
-            const chartClick = {
-                onClick(_evt, elements, chart) {
-                    if (!elements.length) return;
-                    const idx = elements[0].index;
-                    const code = codeFromChartLabel(chart.data.labels[idx]);
-                    if (code) window.open(investingUrl(code), '_blank', 'noopener,noreferrer');
-                }
-            };
             weightChart = new Chart(pie.getContext('2d'), {
                 type: 'doughnut',
                 data: {
@@ -647,45 +859,39 @@
                     responsive: true,
                     aspectRatio: mq ? 1 : 1.35,
                     cutout: '50%',
-                    ...chartClick,
                     plugins: {
                         title: { ...titleStyle, text: '市值仓位占比' },
-                        legend: { position: 'bottom', labels: { color: '#8896ab', font: { size: mq ? 9 : 10 }, boxWidth: 10 } }
+                        legend: { position: 'bottom', labels: { color: '#8896ab', font: { size: mq ? 9 : 10 }, boxWidth: 10 } },
+                        ...shareTooltipFor(sorted)
                     }
                 }
             });
-            barChart = new Chart(bar.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: sorted.map((r) => displayLabel(r)),
-                    datasets: [{
-                        label: '市值',
-                        data: sorted.map((r) => r.market_value),
-                        backgroundColor: 'rgba(201, 168, 76, 0.75)',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    aspectRatio: mq ? 0.55 : 0.85,
-                    ...chartClick,
-                    plugins: {
-                        title: { ...titleStyle, text: '市值（现价×持仓）' },
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            ticks: { color: '#8896ab' },
-                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
-                        },
-                        y: {
-                            ticks: { color: '#8896ab', autoSkip: false, font: { size: mq ? 8 : 9 } },
-                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
-                        }
-                    }
-                }
+            drawBarChart();
+        }
+
+        function syncNumToggle() {
+            document.querySelectorAll('.num-toggle button').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.group === numGroup);
+            });
+        }
+
+        function refreshFormats() {
+            syncNumToggle();
+            if (lastPayload) applySummary(lastPayload, lastCostSum, origin.length);
+            renderTable();
+            if (origin.length) drawCharts(origin, { resetHidden: false });
+        }
+
+        function bindNumToggle() {
+            syncNumToggle();
+            document.querySelectorAll('.num-toggle button').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const g = btn.dataset.group;
+                    if (g !== 'wan' && g !== 'qian') return;
+                    numGroup = g;
+                    localStorage.setItem(NUM_GROUP_KEY, numGroup);
+                    refreshFormats();
+                });
             });
         }
 
@@ -695,6 +901,7 @@
                 Chart.defaults.borderColor = '#1e2d45';
                 Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
             }
+            bindNumToggle();
             let payload = null;
             try {
                 const r = await fetch('etf_hold.json', { cache: 'no-store' });
@@ -711,6 +918,8 @@
 
             const { rows, costSum } = normalizeRows(payload);
             origin = rows;
+            lastPayload = payload;
+            lastCostSum = costSum;
             renderData = [...rows];
             applySummary(payload, costSum, rows.length);
             if (!rows.length) {
@@ -719,6 +928,7 @@
             }
             renderTable();
             drawCharts(rows);
+            document.getElementById('barChartReset').addEventListener('click', resetBarChart);
             document.querySelectorAll('#holdTable th').forEach((th) => {
                 th.addEventListener('click', () => {
                     if (th.dataset.sort) sortTable(th.dataset.sort);
