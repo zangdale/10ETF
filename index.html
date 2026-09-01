@@ -180,11 +180,28 @@
         .container {
             max-width: var(--container-max);
             margin: 0 auto;
-            padding: 28px var(--container-pad) 72px;
-            padding-bottom: max(72px, calc(var(--safe-bottom) + 48px));
+            padding: 28px var(--container-pad) 40px;
             position: relative;
             z-index: 1;
         }
+        .site-footer {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 8px var(--container-pad) max(32px, calc(var(--safe-bottom) + 24px));
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 28px;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+            border-top: 1px solid var(--border);
+        }
+        .site-footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.82rem;
+        }
+        .site-footer a:hover { color: var(--gold); }
         .panel { margin-bottom: 32px; }
         .panel-head {
             display: flex;
@@ -484,6 +501,10 @@
             </div>
         </section>
     </main>
+    <footer class="site-footer">
+        <a href="https://space.bilibili.com/278413353" target="_blank" rel="noopener noreferrer">Bilibili</a>
+        <a href="https://github.com/zangdale" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </footer>
 
     <script>
         const INVESTING_SLUG = {
