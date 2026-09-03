@@ -399,7 +399,6 @@
             '561580', '511360', '159985', '515180', '511010',
             '520870', '513650', '518680', '159307', '513870'
         ];
-        const INVESTING_SLUG = { '511010': 'guotai-sse-deliverable-5-tb' };
         const NAME_OVERRIDE = { '515180': '中证红利' };
         const RANGE_LABEL = { all: '全部', month: '本月', year: '本年', '1y': '一年', custom: '自定义' };
         const LINE_COLORS = [
@@ -421,9 +420,10 @@
             const day = String(d.getDate()).padStart(2, '0');
             return `${y}-${m}-${day}`;
         }
-        function investingUrl(code) {
-            const slug = INVESTING_SLUG[code] || code;
-            return `https://cn.investing.com/etfs/${encodeURIComponent(slug)}`;
+        function xueqiuUrl(code) {
+            const c = String(code || '').trim();
+            const exch = c.startsWith('1') ? 'SZ' : 'SH';
+            return `https://xueqiu.com/S/${exch}${c}`;
         }
         function escapeHtml(s) {
             return String(s)
@@ -618,7 +618,7 @@
             grid.innerHTML = ETF_CODES.map((code) => `
                 <div class="chart-container">
                     <div class="chart-head">
-                        <a href="${investingUrl(code)}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayName(code))}[${code}]</a>
+                        <a href="${xueqiuUrl(code)}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayName(code))}[${code}]</a>
                         <span class="meta" id="meta-${code}">—</span>
                     </div>
                     <canvas id="chart-${code}"></canvas>

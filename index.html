@@ -345,16 +345,24 @@
         }
         .panel-table tbody tr:last-child td { border-bottom: none; }
         .panel-table tbody tr:hover { background: rgba(59, 138, 138, 0.06); }
-        .etf-link {
+        .etf-link,
+        .etf-copy {
             color: inherit;
             text-decoration: none;
             border-bottom: 1px solid transparent;
         }
-        .etf-link:hover {
+        .etf-copy {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            cursor: pointer;
+        }
+        .etf-link:hover,
+        .etf-copy:hover {
             color: var(--gold);
             border-bottom-color: var(--gold);
         }
-        .hold-row { cursor: pointer; }
         .pct-up { color: var(--market-up); font-weight: 600; }
         .pct-down-num { color: var(--market-down); font-weight: 600; }
         @media (min-width: 641px) {
@@ -476,7 +484,7 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 id="sec-table" class="panel-title">持仓明细</h2>
-                <span class="panel-sub">仓位% = 现价×持仓 ÷ Σ(现价×持仓) × 100 · 浮动盈亏 = 市值 − 成本合计 · 浮动盈亏% = (现价 − 成本) ÷ 成本 × 100 · 点击代码或名称打开英为财情 · 点击表头排序</span>
+                <span class="panel-sub">仓位% = 现价×持仓 ÷ Σ(现价×持仓) × 100 · 浮动盈亏 = 市值 − 成本合计 · 浮动盈亏% = (现价 − 成本) ÷ 成本 × 100 · 点击代码复制 · 点击名称打开雪球 · 点击表头排序</span>
             </div>
             <div class="table-wrap">
                 <p id="table-empty" class="state-msg" hidden>暂无 etf_hold.json，请先执行 make hold。</p>
@@ -507,9 +515,6 @@
     </footer>
 
     <script>
-        const INVESTING_SLUG = {
-            '511010': 'guotai-sse-deliverable-5-tb'
-        };
         const NAME_OVERRIDE = {
             '515180': '中证红利'
         };
@@ -524,10 +529,29 @@
             return m ? m[1] : '';
         }
 
-        function investingUrl(code) {
+        function xueqiuUrl(code) {
             const c = String(code || '').trim();
-            const slug = INVESTING_SLUG[c] || c;
-            return `https://cn.investing.com/etfs/${encodeURIComponent(slug)}`;
+            const exch = c.startsWith('1') ? 'SZ' : 'SH';
+            return `https://xueqiu.com/S/${exch}${c}`;
+        }
+
+        function copyText(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;left:0;top:0;opacity:0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            ta.setSelectionRange(0, text.length);
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch { ok = false; }
+            ta.remove();
+            if (ok) return Promise.resolve(true);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text).then(() => true).catch(() => false);
+            }
+            return Promise.resolve(false);
         }
 
         function escapeHtml(s) {
@@ -621,11 +645,10 @@
             body.innerHTML = '';
             renderData.forEach((r) => {
                 const tr = document.createElement('tr');
-                const href = investingUrl(r.code);
-                tr.className = 'hold-row';
+                const href = xueqiuUrl(r.code);
                 tr.innerHTML = `
                     <td class="mono">${r.id}</td>
-                    <td><a class="etf-link" href="${href}" target="_blank" rel="noopener noreferrer"><strong class="mono">${escapeHtml(r.code)}</strong></a></td>
+                    <td><button type="button" class="etf-copy mono" data-code="${escapeHtml(r.code)}" title="点击复制代码"><strong>${escapeHtml(r.code)}</strong></button></td>
                     <td><a class="etf-link" href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayLabel(r))}</a></td>
                     <td class="mono">${formatGrouped(r.amount, 0)}</td>
                     <td class="mono">${r.price.toFixed(3)}</td>
@@ -923,6 +946,17 @@
                 Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
             }
             bindNumToggle();
+            document.getElementById('holdTableBody').addEventListener('click', async (e) => {
+                const btn = e.target.closest('.etf-copy');
+                if (!btn) return;
+                const code = btn.dataset.code || '';
+                if (!code) return;
+                const ok = await copyText(code);
+                const label = btn.querySelector('strong') || btn;
+                const prev = label.textContent;
+                label.textContent = ok ? '已复制' : '复制失败';
+                window.setTimeout(() => { label.textContent = prev; }, 1200);
+            });
             let payload = null;
             try {
                 const r = await fetch('etf_hold.json', { cache: 'no-store' });
