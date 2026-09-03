@@ -821,7 +821,9 @@
                             if (!r) return '';
                             return [
                                 `持仓占比 ${r.weight.toFixed(2)}%`,
-                                `持仓金额 ${yen(r.market_value)}`
+                                `持仓金额 ${yen(r.market_value)}`,
+                                `浮动盈亏 ${yen(r.pnl)}`,
+                                `浮动盈亏% ${pct(r.pnl_pct, 2)}`
                             ];
                         }
                     }
