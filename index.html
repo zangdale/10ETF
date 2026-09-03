@@ -576,17 +576,17 @@
             </div>
             <div class="metrics-grid">
                 <div class="stat-card stat-card--accent">
-                    <h3>总资产</h3>
+                    <h3>总资产¥</h3>
                     <div class="value mono" id="m-total">—</div>
                     <div class="label">账户</div>
                 </div>
                 <div class="stat-card">
-                    <h3>总市值</h3>
+                    <h3>总市值¥</h3>
                     <div class="value mono" id="m-value">—</div>
                     <div class="label">持仓市值</div>
                 </div>
                 <div class="stat-card">
-                    <h3>浮动盈亏</h3>
+                    <h3>浮动盈亏¥</h3>
                     <div class="value mono" id="m-pnl">—</div>
                     <div class="label">账户合计</div>
                 </div>
@@ -596,7 +596,7 @@
                     <div class="label">浮动盈亏 ÷ 成本合计</div>
                 </div>
                 <div class="stat-card">
-                    <h3>可用资金</h3>
+                    <h3>可用资金¥</h3>
                     <div class="value mono" id="m-cash">—</div>
                     <div class="label">现金</div>
                 </div>
@@ -606,7 +606,7 @@
                     <div class="label">总市值 ÷ 总资产</div>
                 </div>
                 <div class="stat-card">
-                    <h3>成本合计</h3>
+                    <h3>成本合计¥</h3>
                     <div class="value mono" id="m-cost">—</div>
                     <div class="label">持仓×成本</div>
                 </div>
@@ -646,10 +646,10 @@
                             <th data-sort="name">名称</th>
                             <th data-sort="amount">持仓</th>
                             <th data-sort="price">现价</th>
-                            <th data-sort="market_value">市值</th>
+                            <th data-sort="market_value">市值¥</th>
                             <th data-sort="cost" class="col-cost">成本</th>
-                            <th data-sort="cost_value" class="col-cost-sum">成本合计</th>
-                            <th data-sort="pnl">浮动盈亏</th>
+                            <th data-sort="cost_value" class="col-cost-sum">成本合计¥</th>
+                            <th data-sort="pnl">浮动盈亏¥</th>
                             <th data-sort="pnl_pct">浮动盈亏%</th>
                             <th data-sort="weight">仓位%</th>
                         </tr>
@@ -801,11 +801,12 @@
             return (neg ? '-' : '') + out;
         }
 
-        function yen(n) {
+        function money(n) {
             if (!Number.isFinite(n)) return '—';
-            return '¥ ' + formatGrouped(n, 2);
+            return formatGrouped(n, 2);
         }
         const pct = (n, d = 1) => Number.isFinite(n) ? n.toFixed(d) + '%' : '—';
+        const pctNum = (n, d = 2) => Number.isFinite(n) ? n.toFixed(d) : '—';
 
         function pnlClass(n) {
             if (!Number.isFinite(n) || n === 0) return '';
@@ -872,12 +873,12 @@
                     <td><button type="button" class="etf-link etf-jump" data-code="${escapeHtml(r.code)}" data-label="${escapeHtml(label)}" title="选择打开英为财情或雪球">${escapeHtml(label)}</button></td>
                     <td class="mono">${formatGrouped(r.amount, 0)}</td>
                     <td class="mono">${r.price.toFixed(3)}</td>
-                    <td class="mono">${yen(r.market_value)}</td>
+                    <td class="mono">${money(r.market_value)}</td>
                     <td class="mono col-cost">${r.cost.toFixed(3)}</td>
-                    <td class="mono col-cost-sum">${yen(r.cost_value)}</td>
-                    <td class="mono ${pnlClass(r.pnl)}">${yen(r.pnl)}</td>
-                    <td class="mono ${pnlClass(r.pnl_pct)}">${pct(r.pnl_pct, 2)}</td>
-                    <td class="mono">${r.weight.toFixed(2)}%</td>
+                    <td class="mono col-cost-sum">${money(r.cost_value)}</td>
+                    <td class="mono ${pnlClass(r.pnl)}">${money(r.pnl)}</td>
+                    <td class="mono ${pnlClass(r.pnl_pct)}">${pctNum(r.pnl_pct, 2)}</td>
+                    <td class="mono">${Number.isFinite(r.weight) ? r.weight.toFixed(2) : '—'}</td>
                 `;
                 body.appendChild(tr);
             });
@@ -917,24 +918,24 @@
         function applySummary(payload, costSum, n) {
             document.getElementById('nav-fetched').textContent = payload.fetched_at || payload.date || '—';
             document.getElementById('nav-count').textContent = String(n);
-            document.getElementById('m-total').textContent = yen(payload.total);
-            document.getElementById('m-value').textContent = yen(payload.total_value);
+            document.getElementById('m-total').textContent = money(payload.total);
+            document.getElementById('m-value').textContent = money(payload.total_value);
             const pnlEl = document.getElementById('m-pnl');
             const pnl = Number(payload.float_profit);
-            pnlEl.textContent = yen(pnl);
+            pnlEl.textContent = money(pnl);
             pnlEl.classList.remove('pct-up', 'pct-down-num');
             if (Number.isFinite(pnl) && pnl !== 0) {
                 pnlEl.classList.add(pnl > 0 ? 'pct-up' : 'pct-down-num');
             }
-            document.getElementById('m-cash').textContent = yen(payload.available);
+            document.getElementById('m-cash').textContent = money(payload.available);
             const assets = Number(payload.total);
             const mkt = Number(payload.total_value);
             const allPos = assets > 0 && Number.isFinite(mkt) ? (mkt / assets) * 100 : NaN;
             document.getElementById('m-pos').textContent = pct(allPos);
-            document.getElementById('m-cost').textContent = yen(costSum);
+            document.getElementById('m-cost').textContent = money(costSum);
             const pnlPctEl = document.getElementById('m-pnl-pct');
             const pnlPctVal = costSum > 0 && Number.isFinite(pnl) ? (pnl / costSum) * 100 : NaN;
-            pnlPctEl.textContent = pct(pnlPctVal, 2);
+            pnlPctEl.textContent = pctNum(pnlPctVal, 2);
             pnlPctEl.classList.remove('pct-up', 'pct-down-num');
             const cls = pnlClass(pnlPctVal);
             if (cls) pnlPctEl.classList.add(cls);
@@ -949,14 +950,14 @@
                             if (!r) return '';
                             return [
                                 `持仓占比 ${r.weight.toFixed(2)}%`,
-                                `持仓金额 ${yen(r.market_value)}`,
-                                `浮动盈亏 ${yen(r.pnl)}`,
-                                `浮动盈亏% ${pct(r.pnl_pct, 2)}`
+                                `持仓金额¥ ${money(r.market_value)}`,
+                                `浮动盈亏¥ ${money(r.pnl)}`,
+                                `浮动盈亏% ${pctNum(r.pnl_pct, 2)}`
                             ];
                         }
                     }
                 }
-            };
+            };      
         }
 
         function visibleBarRows() {
