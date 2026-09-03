@@ -192,6 +192,62 @@
             font-size: 0.82rem;
         }
         .site-footer a:hover { color: var(--gold); }
+        .jump-dialog {
+            position: fixed;
+            inset: 0;
+            margin: auto;
+            height: fit-content;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 22px 22px 16px;
+            width: min(360px, calc(100vw - 32px));
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+        }
+        .jump-dialog::backdrop { background: rgba(10, 14, 23, 0.72); }
+        .jump-dialog h3 {
+            margin: 0 0 4px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .jump-dialog .jump-sub {
+            margin: 0 0 16px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+        .jump-dialog-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .jump-dialog-actions a {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+        }
+        .jump-dialog-actions a:hover {
+            color: var(--gold);
+            border-color: var(--gold);
+            background: var(--gold-dim);
+        }
+        .jump-dialog-cancel {
+            margin-top: 12px;
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font: inherit;
+            font-size: 0.82rem;
+            cursor: pointer;
+            padding: 8px;
+        }
+        .jump-dialog-cancel:hover { color: var(--text-secondary); }
         .panel { margin-bottom: 32px; }
         .panel-head {
             display: flex;
@@ -276,13 +332,21 @@
             padding: 0 4px;
         }
         .chart-head a,
-        .chart-head .title {
+        .chart-head .title,
+        .chart-head .etf-jump {
             color: var(--text-primary);
             text-decoration: none;
             font-size: 0.85rem;
             font-weight: 600;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+            cursor: pointer;
+            text-align: left;
         }
-        .chart-head a:hover { color: var(--gold); }
+        .chart-head a:hover,
+        .chart-head .etf-jump:hover { color: var(--gold); }
         .chart-head .meta {
             font-family: var(--font-mono);
             font-size: 0.75rem;
@@ -393,12 +457,22 @@
         <a href="https://space.bilibili.com/278413353" target="_blank" rel="noopener noreferrer">Bilibili</a>
         <a href="https://github.com/zangdale" target="_blank" rel="noopener noreferrer">GitHub</a>
     </footer>
+    <dialog id="jumpDialog" class="jump-dialog" aria-labelledby="jumpDialogTitle">
+        <h3 id="jumpDialogTitle">选择打开方式</h3>
+        <p class="jump-sub" id="jumpDialogSub"></p>
+        <div class="jump-dialog-actions">
+            <a id="jumpInvesting" target="_blank" rel="noopener noreferrer">英为财情</a>
+            <a id="jumpXueqiu" target="_blank" rel="noopener noreferrer">雪球</a>
+        </div>
+        <button type="button" class="jump-dialog-cancel" id="jumpDialogClose">取消</button>
+    </dialog>
 
     <script>
         const ETF_CODES = [
             '561580', '511360', '159985', '515180', '511010',
             '520870', '513650', '518680', '159307', '513870'
         ];
+        const INVESTING_SLUG = { '511010': 'guotai-sse-deliverable-5-tb' };
         const NAME_OVERRIDE = { '515180': '中证红利' };
         const RANGE_LABEL = { all: '全部', month: '本月', year: '本年', '1y': '一年', custom: '自定义' };
         const LINE_COLORS = [
@@ -420,10 +494,30 @@
             const day = String(d.getDate()).padStart(2, '0');
             return `${y}-${m}-${day}`;
         }
+        function investingUrl(code) {
+            const c = String(code || '').trim();
+            const slug = INVESTING_SLUG[c] || c;
+            return `https://cn.investing.com/etfs/${encodeURIComponent(slug)}`;
+        }
         function xueqiuUrl(code) {
             const c = String(code || '').trim();
             const exch = c.startsWith('1') ? 'SZ' : 'SH';
             return `https://xueqiu.com/S/${exch}${c}`;
+        }
+        function openJumpDialog(code, label) {
+            const dlg = document.getElementById('jumpDialog');
+            document.getElementById('jumpDialogSub').textContent = label || code;
+            document.getElementById('jumpInvesting').href = investingUrl(code);
+            document.getElementById('jumpXueqiu').href = xueqiuUrl(code);
+            dlg.showModal();
+        }
+        function bindJumpDialog() {
+            const dlg = document.getElementById('jumpDialog');
+            const close = () => dlg.close();
+            document.getElementById('jumpDialogClose').addEventListener('click', close);
+            dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+            document.getElementById('jumpInvesting').addEventListener('click', close);
+            document.getElementById('jumpXueqiu').addEventListener('click', close);
         }
         function escapeHtml(s) {
             return String(s)
@@ -615,15 +709,18 @@
 
         function buildGrid() {
             const grid = document.getElementById('hist-grid');
-            grid.innerHTML = ETF_CODES.map((code) => `
+            grid.innerHTML = ETF_CODES.map((code) => {
+                const label = `${displayName(code)}[${code}]`;
+                return `
                 <div class="chart-container">
                     <div class="chart-head">
-                        <a href="${xueqiuUrl(code)}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayName(code))}[${code}]</a>
+                        <button type="button" class="etf-jump" data-code="${escapeHtml(code)}" data-label="${escapeHtml(label)}" title="选择打开英为财情或雪球">${escapeHtml(label)}</button>
                         <span class="meta" id="meta-${code}">—</span>
                     </div>
                     <canvas id="chart-${code}"></canvas>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function syncNumToggle() {
@@ -653,6 +750,12 @@
                 Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
             }
             bindNumToggle();
+            bindJumpDialog();
+            document.getElementById('hist-grid').addEventListener('click', (e) => {
+                const jump = e.target.closest('.etf-jump');
+                if (!jump) return;
+                openJumpDialog(jump.dataset.code || '', jump.dataset.label || jump.textContent);
+            });
             document.querySelectorAll('.range-btn').forEach((btn) => {
                 btn.addEventListener('click', () => setRange(btn.dataset.range));
             });

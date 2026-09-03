@@ -350,19 +350,76 @@
             color: inherit;
             text-decoration: none;
             border-bottom: 1px solid transparent;
-        }
-        .etf-copy {
             background: none;
-            border: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
             padding: 0;
             font: inherit;
             cursor: pointer;
+            text-align: left;
         }
         .etf-link:hover,
         .etf-copy:hover {
             color: var(--gold);
             border-bottom-color: var(--gold);
         }
+        .jump-dialog {
+            position: fixed;
+            inset: 0;
+            margin: auto;
+            height: fit-content;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 22px 22px 16px;
+            width: min(360px, calc(100vw - 32px));
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+        }
+        .jump-dialog::backdrop { background: rgba(10, 14, 23, 0.72); }
+        .jump-dialog h3 {
+            margin: 0 0 4px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .jump-dialog .jump-sub {
+            margin: 0 0 16px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+        .jump-dialog-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .jump-dialog-actions a {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+        }
+        .jump-dialog-actions a:hover {
+            color: var(--gold);
+            border-color: var(--gold);
+            background: var(--gold-dim);
+        }
+        .jump-dialog-cancel {
+            margin-top: 12px;
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font: inherit;
+            font-size: 0.82rem;
+            cursor: pointer;
+            padding: 8px;
+        }
+        .jump-dialog-cancel:hover { color: var(--text-secondary); }
         .pct-up { color: var(--market-up); font-weight: 600; }
         .pct-down-num { color: var(--market-down); font-weight: 600; }
         @media (min-width: 641px) {
@@ -484,7 +541,7 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 id="sec-table" class="panel-title">持仓明细</h2>
-                <span class="panel-sub">仓位% = 现价×持仓 ÷ Σ(现价×持仓) × 100 · 浮动盈亏 = 市值 − 成本合计 · 浮动盈亏% = (现价 − 成本) ÷ 成本 × 100 · 点击代码复制 · 点击名称打开雪球 · 点击表头排序</span>
+                <span class="panel-sub">仓位% = 现价×持仓 ÷ Σ(现价×持仓) × 100 · 浮动盈亏 = 市值 − 成本合计 · 浮动盈亏% = (现价 − 成本) ÷ 成本 × 100 · 点击代码复制 · 点击名称选择英为财情或雪球 · 点击表头排序</span>
             </div>
             <div class="table-wrap">
                 <p id="table-empty" class="state-msg" hidden>暂无 etf_hold.json，请先执行 make hold。</p>
@@ -513,8 +570,20 @@
         <a href="https://space.bilibili.com/278413353" target="_blank" rel="noopener noreferrer">Bilibili</a>
         <a href="https://github.com/zangdale" target="_blank" rel="noopener noreferrer">GitHub</a>
     </footer>
+    <dialog id="jumpDialog" class="jump-dialog" aria-labelledby="jumpDialogTitle">
+        <h3 id="jumpDialogTitle">选择打开方式</h3>
+        <p class="jump-sub" id="jumpDialogSub"></p>
+        <div class="jump-dialog-actions">
+            <a id="jumpInvesting" target="_blank" rel="noopener noreferrer">英为财情</a>
+            <a id="jumpXueqiu" target="_blank" rel="noopener noreferrer">雪球</a>
+        </div>
+        <button type="button" class="jump-dialog-cancel" id="jumpDialogClose">取消</button>
+    </dialog>
 
     <script>
+        const INVESTING_SLUG = {
+            '511010': 'guotai-sse-deliverable-5-tb'
+        };
         const NAME_OVERRIDE = {
             '515180': '中证红利'
         };
@@ -529,10 +598,33 @@
             return m ? m[1] : '';
         }
 
+        function investingUrl(code) {
+            const c = String(code || '').trim();
+            const slug = INVESTING_SLUG[c] || c;
+            return `https://cn.investing.com/etfs/${encodeURIComponent(slug)}`;
+        }
+
         function xueqiuUrl(code) {
             const c = String(code || '').trim();
             const exch = c.startsWith('1') ? 'SZ' : 'SH';
             return `https://xueqiu.com/S/${exch}${c}`;
+        }
+
+        function openJumpDialog(code, label) {
+            const dlg = document.getElementById('jumpDialog');
+            document.getElementById('jumpDialogSub').textContent = label || code;
+            document.getElementById('jumpInvesting').href = investingUrl(code);
+            document.getElementById('jumpXueqiu').href = xueqiuUrl(code);
+            dlg.showModal();
+        }
+
+        function bindJumpDialog() {
+            const dlg = document.getElementById('jumpDialog');
+            const close = () => dlg.close();
+            document.getElementById('jumpDialogClose').addEventListener('click', close);
+            dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+            document.getElementById('jumpInvesting').addEventListener('click', close);
+            document.getElementById('jumpXueqiu').addEventListener('click', close);
         }
 
         function copyText(text) {
@@ -645,11 +737,11 @@
             body.innerHTML = '';
             renderData.forEach((r) => {
                 const tr = document.createElement('tr');
-                const href = xueqiuUrl(r.code);
+                const label = displayLabel(r);
                 tr.innerHTML = `
                     <td class="mono">${r.id}</td>
                     <td><button type="button" class="etf-copy mono" data-code="${escapeHtml(r.code)}" title="点击复制代码"><strong>${escapeHtml(r.code)}</strong></button></td>
-                    <td><a class="etf-link" href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayLabel(r))}</a></td>
+                    <td><button type="button" class="etf-link etf-jump" data-code="${escapeHtml(r.code)}" data-label="${escapeHtml(label)}" title="选择打开英为财情或雪球">${escapeHtml(label)}</button></td>
                     <td class="mono">${formatGrouped(r.amount, 0)}</td>
                     <td class="mono">${r.price.toFixed(3)}</td>
                     <td class="mono">${yen(r.market_value)}</td>
@@ -946,7 +1038,13 @@
                 Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
             }
             bindNumToggle();
+            bindJumpDialog();
             document.getElementById('holdTableBody').addEventListener('click', async (e) => {
+                const jump = e.target.closest('.etf-jump');
+                if (jump) {
+                    openJumpDialog(jump.dataset.code || '', jump.dataset.label || jump.textContent);
+                    return;
+                }
                 const btn = e.target.closest('.etf-copy');
                 if (!btn) return;
                 const code = btn.dataset.code || '';
