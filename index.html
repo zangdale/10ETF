@@ -4,8 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0a0e17">
-    <meta name="color-scheme" content="dark">
+    <meta name="color-scheme" content="dark light">
     <title>10ETF 持仓</title>
+    <script>
+        (function () {
+            var t = localStorage.getItem('10etf-theme');
+            if (t !== 'light' && t !== 'dark') t = 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.style.colorScheme = t;
+        })();
+    </script>
     <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
     <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,6 +39,13 @@
             --text-dim: #5a6678;
             --overlay-nav-bg: rgba(10, 14, 23, 0.85);
             --overlay-grid: rgba(59, 138, 138, 0.03);
+            --dialog-backdrop: rgba(10, 14, 23, 0.72);
+            --chart-title: #e8edf5;
+            --chart-muted: #8896ab;
+            --chart-grid: rgba(30, 45, 69, 0.9);
+            --chart-slice-border: #1a2234;
+            --theme-btn-bg: #2a3448;
+            --theme-btn-fg: #e8edf5;
             --radius-2xl: 12px;
             --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
             --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
@@ -42,6 +57,26 @@
             --safe-bottom: env(safe-area-inset-bottom, 0px);
             --safe-left: env(safe-area-inset-left, 0px);
             --transition-fast: 0.2s ease;
+        }
+        html[data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --border: #d8dee8;
+            --gold: #b8922e;
+            --gold-dim: rgba(184, 146, 46, 0.14);
+            --text-primary: #1a2332;
+            --text-secondary: #5a6678;
+            --text-dim: #8a94a3;
+            --overlay-nav-bg: rgba(245, 247, 250, 0.9);
+            --overlay-grid: rgba(59, 138, 138, 0.07);
+            --dialog-backdrop: rgba(26, 35, 50, 0.38);
+            --chart-title: #1a2332;
+            --chart-muted: #5a6678;
+            --chart-grid: rgba(200, 208, 220, 0.95);
+            --chart-slice-border: #ffffff;
+            --theme-btn-bg: #e8ecf2;
+            --theme-btn-fg: #1a2332;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { font-size: 15px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -177,6 +212,23 @@
             color: var(--gold);
             background: var(--gold-dim);
         }
+        .theme-toggle {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            background: var(--theme-btn-bg);
+            color: var(--theme-btn-fg);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .theme-toggle:hover { color: var(--gold); }
+        .theme-toggle .icon-sun { display: none; }
+        html[data-theme="light"] .theme-toggle .icon-moon { display: none; }
+        html[data-theme="light"] .theme-toggle .icon-sun { display: block; }
         .container {
             max-width: var(--container-max);
             margin: 0 auto;
@@ -227,7 +279,7 @@
         .panel-sub { font-size: 0.78rem; color: var(--text-dim); }
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 16px;
         }
         .stat-card {
@@ -298,6 +350,7 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-2xl);
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             margin-top: 8px;
         }
         .state-msg {
@@ -377,7 +430,7 @@
             width: min(360px, calc(100vw - 32px));
             box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
         }
-        .jump-dialog::backdrop { background: rgba(10, 14, 23, 0.72); }
+        .jump-dialog::backdrop { background: var(--dialog-backdrop); }
         .jump-dialog h3 {
             margin: 0 0 4px;
             font-size: 0.95rem;
@@ -420,28 +473,59 @@
             padding: 8px;
         }
         .jump-dialog-cancel:hover { color: var(--text-secondary); }
+        .panel-table thead th.col-code {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: var(--bg-secondary);
+        }
+        .panel-table tbody td.col-code {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            background: var(--bg-card);
+        }
+        .panel-table tbody tr:hover td.col-code {
+            background: var(--bg-secondary);
+        }
         .pct-up { color: var(--market-up); font-weight: 600; }
         .pct-down-num { color: var(--market-down); font-weight: 600; }
-        @media (min-width: 641px) {
-            .topnav-inner { flex-wrap: nowrap; align-items: center; }
-            .topnav-meta {
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                max-width: min(560px, 45vw);
-            }
-            .brand { flex-shrink: 0; }
-        }
-        @media (max-width: 900px) {
-            .charts-grid { grid-template-columns: 1fr; }
+        @media (max-width: 1100px) {
+            .topnav-inner { gap: 12px 16px; }
             .topnav-meta { margin-left: 0; width: 100%; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .col-id { display: none; }
+            .panel-table { min-width: 820px; }
+        }
+        @media (max-width: 1024px) {
+            .topnav { position: sticky; top: 0; }
+            body { padding-top: var(--safe-top); }
+            :root { --container-pad: 18px; }
+            .container { padding-top: 20px; }
+        }
+        @media (max-width: 720px) {
+            .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .stat-card { padding: 14px 14px; }
+            .stat-card .value { font-size: 1.2rem; }
+            .col-cost,
+            .col-cost-sum { display: none; }
+            .panel-table { min-width: 620px; font-size: 0.75rem; }
+            .panel-table thead th,
+            .panel-table tbody td { padding: 9px 8px; }
+            .panel-sub { font-size: 0.7rem; }
         }
         @media (max-width: 640px) {
             html { font-size: 14px; }
-            :root { --container-pad: 14px; }
-            .topnav { position: sticky; top: 0; }
-            body { padding-top: var(--safe-top); }
+            :root { --container-pad: 12px; }
+            .brand { width: 100%; }
+            .nav-links { width: 100%; }
+            .nav-links a { flex: 1; text-align: center; }
+            .topnav-chip { padding: 5px 8px; }
+            .jump-dialog { width: min(360px, calc(100vw - 24px)); padding: 18px 16px 14px; }
+        }
+        @media (max-width: 400px) {
             .metrics-grid { grid-template-columns: 1fr; }
-            .stat-card .value { font-size: 1.25rem; }
         }
     </style>
 </head>
@@ -470,6 +554,15 @@
                     <button type="button" data-group="wan">万分位</button>
                     <button type="button" data-group="qian">千分位</button>
                 </div>
+                <button type="button" class="theme-toggle" id="themeToggle" aria-label="切换主题">
+                    <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path fill="currentColor" d="M21 14.3A8.5 8.5 0 0 1 9.7 3 9 9 0 1 0 21 14.3z"/>
+                    </svg>
+                    <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>
+                        <path d="M12 3v2M12 19v2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M3 12h2M19 12h2M5.2 18.8l1.4-1.4M17.4 6.6l1.4-1.4"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </nav>
@@ -548,14 +641,14 @@
                 <table id="holdTable" class="panel-table">
                     <thead>
                         <tr>
-                            <th data-sort="id">序号</th>
-                            <th data-sort="code">代码</th>
+                            <th data-sort="id" class="col-id">序号</th>
+                            <th data-sort="code" class="col-code">代码</th>
                             <th data-sort="name">名称</th>
                             <th data-sort="amount">持仓</th>
                             <th data-sort="price">现价</th>
                             <th data-sort="market_value">市值</th>
-                            <th data-sort="cost">成本</th>
-                            <th data-sort="cost_value">成本合计</th>
+                            <th data-sort="cost" class="col-cost">成本</th>
+                            <th data-sort="cost_value" class="col-cost-sum">成本合计</th>
                             <th data-sort="pnl">浮动盈亏</th>
                             <th data-sort="pnl_pct">浮动盈亏%</th>
                             <th data-sort="weight">仓位%</th>
@@ -655,7 +748,42 @@
         }
 
         const NUM_GROUP_KEY = '10etf-num-group';
+        const THEME_KEY = '10etf-theme';
         let numGroup = localStorage.getItem(NUM_GROUP_KEY) === 'qian' ? 'qian' : 'wan';
+
+        function cssVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        function applyChartDefaults() {
+            if (typeof Chart === 'undefined') return;
+            Chart.defaults.color = cssVar('--chart-muted');
+            Chart.defaults.borderColor = cssVar('--border');
+            Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
+        }
+
+        function applyTheme(theme, { persist = true } = {}) {
+            const t = theme === 'light' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.style.colorScheme = t;
+            const meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.content = t === 'light' ? '#f5f7fa' : '#0a0e17';
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.setAttribute('aria-label', t === 'light' ? '切换到黑色主题' : '切换到白色主题');
+            if (persist) localStorage.setItem(THEME_KEY, t);
+        }
+
+        function bindThemeToggle() {
+            applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark', { persist: false });
+            const btn = document.getElementById('themeToggle');
+            if (!btn) return;
+            btn.addEventListener('click', () => {
+                const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+                applyTheme(next);
+                applyChartDefaults();
+                if (origin.length) drawCharts(origin, { resetHidden: false });
+            });
+        }
 
         function formatGrouped(n, fracDigits) {
             if (!Number.isFinite(n)) return '—';
@@ -739,14 +867,14 @@
                 const tr = document.createElement('tr');
                 const label = displayLabel(r);
                 tr.innerHTML = `
-                    <td class="mono">${r.id}</td>
-                    <td><button type="button" class="etf-copy mono" data-code="${escapeHtml(r.code)}" title="点击复制代码"><strong>${escapeHtml(r.code)}</strong></button></td>
+                    <td class="mono col-id">${r.id}</td>
+                    <td class="col-code"><button type="button" class="etf-copy mono" data-code="${escapeHtml(r.code)}" title="点击复制代码"><strong>${escapeHtml(r.code)}</strong></button></td>
                     <td><button type="button" class="etf-link etf-jump" data-code="${escapeHtml(r.code)}" data-label="${escapeHtml(label)}" title="选择打开英为财情或雪球">${escapeHtml(label)}</button></td>
                     <td class="mono">${formatGrouped(r.amount, 0)}</td>
                     <td class="mono">${r.price.toFixed(3)}</td>
                     <td class="mono">${yen(r.market_value)}</td>
-                    <td class="mono">${r.cost.toFixed(3)}</td>
-                    <td class="mono">${yen(r.cost_value)}</td>
+                    <td class="mono col-cost">${r.cost.toFixed(3)}</td>
+                    <td class="mono col-cost-sum">${yen(r.cost_value)}</td>
                     <td class="mono ${pnlClass(r.pnl)}">${yen(r.pnl)}</td>
                     <td class="mono ${pnlClass(r.pnl_pct)}">${pct(r.pnl_pct, 2)}</td>
                     <td class="mono">${r.weight.toFixed(2)}%</td>
@@ -905,8 +1033,17 @@
             if (code) hideBarCode(code);
         }
 
+        function screenTier() {
+            const w = window.innerWidth;
+            if (w <= 640) return 'sm';
+            if (w <= 1024) return 'md';
+            return 'lg';
+        }
+
         function drawBarChart() {
-            const mq = typeof matchMedia !== 'undefined' && matchMedia('(max-width: 640px)').matches;
+            const tier = screenTier();
+            const mq = tier !== 'lg';
+            const sm = tier === 'sm';
             const bar = document.getElementById('weightBarChart');
             if (!bar) return;
             bar.removeEventListener('click', onBarCanvasClick);
@@ -914,7 +1051,7 @@
             const sorted = visibleBarRows();
             const titleStyle = {
                 display: true,
-                color: '#e8edf5',
+                color: cssVar('--chart-title'),
                 font: { size: mq ? 12 : 14, weight: '600' }
             };
             barChart = new Chart(bar.getContext('2d'), {
@@ -931,7 +1068,7 @@
                 options: {
                     indexAxis: 'y',
                     responsive: true,
-                    aspectRatio: mq ? 0.55 : 0.85,
+                    aspectRatio: sm ? 0.5 : (mq ? 0.65 : 0.85),
                     plugins: {
                         title: { ...titleStyle, text: '市值（现价×持仓）' },
                         legend: { display: false },
@@ -941,14 +1078,14 @@
                         x: {
                             beginAtZero: true,
                             ticks: {
-                                color: '#8896ab',
+                                color: cssVar('--chart-muted'),
                                 callback: (v) => formatGrouped(Number(v), 0)
                             },
-                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
+                            grid: { color: cssVar('--chart-grid') }
                         },
                         y: {
-                            ticks: { color: '#8896ab', autoSkip: false, font: { size: mq ? 8 : 9 } },
-                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
+                            ticks: { color: cssVar('--chart-muted'), autoSkip: false, font: { size: sm ? 8 : 9 } },
+                            grid: { color: cssVar('--chart-grid') }
                         }
                     }
                 }
@@ -959,10 +1096,12 @@
         }
 
         function drawCharts(rows, { resetHidden = true } = {}) {
-            const mq = typeof matchMedia !== 'undefined' && matchMedia('(max-width: 640px)').matches;
+            const tier = screenTier();
+            const mq = tier !== 'lg';
+            const sm = tier === 'sm';
             const titleStyle = {
                 display: true,
-                color: '#e8edf5',
+                color: cssVar('--chart-title'),
                 font: { size: mq ? 12 : 14, weight: '600' }
             };
             const colors = [
@@ -989,17 +1128,17 @@
                     datasets: [{
                         data: sorted.map((r) => r.weight),
                         backgroundColor: colors,
-                        borderColor: '#1a2234',
+                        borderColor: cssVar('--chart-slice-border'),
                         borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
-                    aspectRatio: mq ? 1 : 1.35,
+                    aspectRatio: sm ? 1 : (mq ? 1.15 : 1.35),
                     cutout: '50%',
                     plugins: {
                         title: { ...titleStyle, text: '市值仓位占比' },
-                        legend: { position: 'bottom', labels: { color: '#8896ab', font: { size: mq ? 9 : 10 }, boxWidth: 10 } },
+                        legend: { position: 'bottom', labels: { color: cssVar('--chart-muted'), font: { size: mq ? 9 : 10 }, boxWidth: 10 } },
                         ...shareTooltipFor(sorted)
                     }
                 }
@@ -1034,12 +1173,9 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            if (typeof Chart !== 'undefined') {
-                Chart.defaults.color = '#8896ab';
-                Chart.defaults.borderColor = '#1e2d45';
-                Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
-            }
+            applyChartDefaults();
             bindNumToggle();
+            bindThemeToggle();
             bindJumpDialog();
             document.getElementById('holdTableBody').addEventListener('click', async (e) => {
                 const jump = e.target.closest('.etf-jump');
@@ -1088,6 +1224,17 @@
                 th.addEventListener('click', () => {
                     if (th.dataset.sort) sortTable(th.dataset.sort);
                 });
+            });
+            let lastTier = screenTier();
+            window.addEventListener('resize', () => {
+                window.clearTimeout(window.__10etfResize);
+                window.__10etfResize = window.setTimeout(() => {
+                    const next = screenTier();
+                    if (next === lastTier) return;
+                    lastTier = next;
+                    applyChartDefaults();
+                    if (origin.length) drawCharts(origin, { resetHidden: false });
+                }, 180);
             });
         });
     </script>

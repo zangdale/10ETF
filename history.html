@@ -4,8 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0a0e17">
-    <meta name="color-scheme" content="dark">
+    <meta name="color-scheme" content="dark light">
     <title>10ETF 历史持仓</title>
+    <script>
+        (function () {
+            var t = localStorage.getItem('10etf-theme');
+            if (t !== 'light' && t !== 'dark') t = 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.style.colorScheme = t;
+        })();
+    </script>
     <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
     <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,6 +34,11 @@
             --text-dim: #5a6678;
             --overlay-nav-bg: rgba(10, 14, 23, 0.85);
             --overlay-grid: rgba(59, 138, 138, 0.03);
+            --dialog-backdrop: rgba(10, 14, 23, 0.72);
+            --chart-muted: #8896ab;
+            --chart-grid: rgba(30, 45, 69, 0.9);
+            --theme-btn-bg: #2a3448;
+            --theme-btn-fg: #e8edf5;
             --radius-2xl: 12px;
             --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
             --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
@@ -36,6 +49,24 @@
             --safe-right: env(safe-area-inset-right, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
             --safe-left: env(safe-area-inset-left, 0px);
+        }
+        html[data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --border: #d8dee8;
+            --gold: #b8922e;
+            --gold-dim: rgba(184, 146, 46, 0.14);
+            --text-primary: #1a2332;
+            --text-secondary: #5a6678;
+            --text-dim: #8a94a3;
+            --overlay-nav-bg: rgba(245, 247, 250, 0.9);
+            --overlay-grid: rgba(59, 138, 138, 0.07);
+            --dialog-backdrop: rgba(26, 35, 50, 0.38);
+            --chart-muted: #5a6678;
+            --chart-grid: rgba(200, 208, 220, 0.95);
+            --theme-btn-bg: #e8ecf2;
+            --theme-btn-fg: #1a2332;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { font-size: 15px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -167,6 +198,23 @@
             color: var(--gold);
             background: var(--gold-dim);
         }
+        .theme-toggle {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            background: var(--theme-btn-bg);
+            color: var(--theme-btn-fg);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .theme-toggle:hover { color: var(--gold); }
+        .theme-toggle .icon-sun { display: none; }
+        html[data-theme="light"] .theme-toggle .icon-moon { display: none; }
+        html[data-theme="light"] .theme-toggle .icon-sun { display: block; }
         .container {
             max-width: var(--container-max);
             margin: 0 auto;
@@ -205,7 +253,7 @@
             width: min(360px, calc(100vw - 32px));
             box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
         }
-        .jump-dialog::backdrop { background: rgba(10, 14, 23, 0.72); }
+        .jump-dialog::backdrop { background: var(--dialog-backdrop); }
         .jump-dialog h3 {
             margin: 0 0 4px;
             font-size: 0.95rem;
@@ -310,26 +358,52 @@
             border-radius: 6px;
             font-family: var(--font-mono);
             font-size: 0.8rem;
-            color-scheme: dark;
+            color-scheme: inherit;
         }
         .hist-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 18px;
         }
+        @media (min-width: 720px) {
+            .hist-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (min-width: 1100px) {
+            #summary-grid.hist-grid { grid-template-columns: 1fr 1fr 1fr; }
+            #hist-grid.hist-grid { grid-template-columns: 1fr 1fr; }
+        }
         .chart-container {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius-2xl);
             padding: 16px 14px 10px;
+            position: relative;
         }
+        .chart-fs-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 2;
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 0;
+        }
+        .chart-fs-btn:hover { color: var(--gold); background: var(--gold-dim); }
         .chart-head {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
             gap: 8px;
             margin-bottom: 6px;
-            padding: 0 4px;
+            padding: 0 36px 0 4px;
         }
         .chart-head a,
         .chart-head .title,
@@ -352,6 +426,56 @@
             font-size: 0.75rem;
             color: var(--text-secondary);
         }
+        .chart-fs-dialog {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100dvh;
+            max-width: none;
+            max-height: none;
+            margin: 0;
+            border: none;
+            padding: 12px 16px 16px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .chart-fs-dialog::backdrop { background: var(--dialog-backdrop); }
+        .chart-fs-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+            min-height: 36px;
+        }
+        .chart-fs-bar .title {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .chart-fs-bar .meta {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+        .chart-fs-close {
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .chart-fs-close:hover { color: var(--gold); }
+        .chart-fs-body {
+            height: calc(100dvh - 64px);
+            position: relative;
+        }
         .state-msg {
             padding: 28px 20px;
             text-align: center;
@@ -360,18 +484,31 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-2xl);
         }
-        @media (min-width: 641px) {
-            .topnav-inner { flex-wrap: nowrap; align-items: center; }
-            .brand { flex-shrink: 0; }
-        }
-        @media (max-width: 900px) {
+        @media (max-width: 1100px) {
+            .topnav-inner { gap: 12px 16px; }
             .topnav-meta { margin-left: 0; width: 100%; }
+        }
+        @media (max-width: 1024px) {
+            .topnav { position: sticky; top: 0; }
+            body { padding-top: var(--safe-top); }
+            :root { --container-pad: 18px; }
+            .container { padding-top: 20px; }
+        }
+        @media (max-width: 720px) {
+            .hist-grid { grid-template-columns: 1fr; }
+            .panel-sub { font-size: 0.7rem; }
+            .chart-container { padding: 12px 10px 8px; }
         }
         @media (max-width: 640px) {
             html { font-size: 14px; }
-            :root { --container-pad: 14px; }
-            .topnav { position: sticky; top: 0; }
-            body { padding-top: var(--safe-top); }
+            :root { --container-pad: 12px; }
+            .brand { width: 100%; }
+            .nav-links { width: 100%; }
+            .nav-links a { flex: 1; text-align: center; }
+            .range-btn { padding: 8px 12px; }
+            .range-dates { width: 100%; }
+            .range-dates input[type="date"] { min-width: 0; flex: 1; }
+            .jump-dialog { width: min(360px, calc(100vw - 24px)); padding: 18px 16px 14px; }
         }
     </style>
 </head>
@@ -400,6 +537,15 @@
                     <button type="button" data-group="wan">万分位</button>
                     <button type="button" data-group="qian">千分位</button>
                 </div>
+                <button type="button" class="theme-toggle" id="themeToggle" aria-label="切换主题">
+                    <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path fill="currentColor" d="M21 14.3A8.5 8.5 0 0 1 9.7 3 9 9 0 1 0 21 14.3z"/>
+                    </svg>
+                    <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>
+                        <path d="M12 3v2M12 19v2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M3 12h2M19 12h2M5.2 18.8l1.4-1.4M17.4 6.6l1.4-1.4"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </nav>
@@ -424,6 +570,11 @@
             <p id="hist-empty" class="state-msg" hidden>暂无历史快照，请先执行 make hold。</p>
             <div id="summary-grid" class="hist-grid">
                 <div class="chart-container">
+                    <button type="button" class="chart-fs-btn" data-canvas="chart-acct-total" aria-label="全屏查看" title="全屏查看">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                        </svg>
+                    </button>
                     <div class="chart-head">
                         <span class="title">总资产变化</span>
                         <span class="meta" id="meta-acct-total">—</span>
@@ -431,6 +582,11 @@
                     <canvas id="chart-acct-total"></canvas>
                 </div>
                 <div class="chart-container">
+                    <button type="button" class="chart-fs-btn" data-canvas="chart-acct-pnl" aria-label="全屏查看" title="全屏查看">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                        </svg>
+                    </button>
                     <div class="chart-head">
                         <span class="title">总浮动盈亏</span>
                         <span class="meta" id="meta-acct-pnl">—</span>
@@ -438,6 +594,11 @@
                     <canvas id="chart-acct-pnl"></canvas>
                 </div>
                 <div class="chart-container">
+                    <button type="button" class="chart-fs-btn" data-canvas="chart-acct-pnl-pct" aria-label="全屏查看" title="全屏查看">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                        </svg>
+                    </button>
                     <div class="chart-head">
                         <span class="title">总浮动盈亏%</span>
                         <span class="meta" id="meta-acct-pnl-pct">—</span>
@@ -465,6 +626,20 @@
             <a id="jumpXueqiu" target="_blank" rel="noopener noreferrer">雪球</a>
         </div>
         <button type="button" class="jump-dialog-cancel" id="jumpDialogClose">取消</button>
+    </dialog>
+    <dialog id="chartFsDialog" class="chart-fs-dialog" aria-labelledby="chartFsTitle">
+        <div class="chart-fs-bar">
+            <span class="title" id="chartFsTitle">全屏查看</span>
+            <span class="meta" id="chartFsMeta"></span>
+            <button type="button" class="chart-fs-close" id="chartFsClose" aria-label="退出全屏" title="退出全屏">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 15H4v5"/><path d="M15 9h5V4"/><path d="M4 20l6-6"/><path d="M20 4l-6 6"/>
+                </svg>
+            </button>
+        </div>
+        <div class="chart-fs-body">
+            <canvas id="chart-fs"></canvas>
+        </div>
     </dialog>
 
     <script>
@@ -549,6 +724,8 @@
         let allDates = [];
         let activeRange = 'all';
         const charts = {};
+        const chartSeries = {};
+        let fsSourceId = '';
 
         function displayName(code) {
             return NAME_OVERRIDE[code] || names[code] || code;
@@ -566,7 +743,39 @@
         }
 
         const NUM_GROUP_KEY = '10etf-num-group';
+        const THEME_KEY = '10etf-theme';
         let numGroup = localStorage.getItem(NUM_GROUP_KEY) === 'qian' ? 'qian' : 'wan';
+
+        function cssVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+        function applyChartDefaults() {
+            if (typeof Chart === 'undefined') return;
+            Chart.defaults.color = cssVar('--chart-muted');
+            Chart.defaults.borderColor = cssVar('--border');
+            Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
+        }
+        function applyTheme(theme, { persist = true } = {}) {
+            const t = theme === 'light' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.style.colorScheme = t;
+            const meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.content = t === 'light' ? '#f5f7fa' : '#0a0e17';
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.setAttribute('aria-label', t === 'light' ? '切换到黑色主题' : '切换到白色主题');
+            if (persist) localStorage.setItem(THEME_KEY, t);
+        }
+        function bindThemeToggle() {
+            applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark', { persist: false });
+            const btn = document.getElementById('themeToggle');
+            if (!btn) return;
+            btn.addEventListener('click', () => {
+                const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+                applyTheme(next);
+                applyChartDefaults();
+                if (allDates.length) drawCharts();
+            });
+        }
 
         function formatGrouped(n, fracDigits) {
             if (!Number.isFinite(n)) return '—';
@@ -597,11 +806,24 @@
             return allDates.filter((d) => (!from || d >= from) && (!to || d <= to));
         }
 
+        function screenTier() {
+            const w = window.innerWidth;
+            if (w <= 640) return 'sm';
+            if (w <= 1024) return 'md';
+            return 'lg';
+        }
+
         function drawLine(canvasId, values, dates, opts) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
+            if (canvasId !== 'chart-fs') {
+                chartSeries[canvasId] = { values, dates, opts };
+            }
             if (charts[canvasId]) charts[canvasId].destroy();
             const border = opts.color;
+            const tier = screenTier();
+            const aspect = tier === 'sm' ? 1.7 : (tier === 'md' ? 2.1 : 2.8);
+            const fs = canvasId === 'chart-fs';
             charts[canvasId] = new Chart(canvas.getContext('2d'), {
                 type: 'line',
                 data: {
@@ -613,15 +835,15 @@
                         fill: true,
                         tension: 0.25,
                         spanGaps: true,
-                        pointRadius: dates.length <= 2 ? 4 : 2,
-                        pointHoverRadius: 5,
-                        borderWidth: 2
+                        pointRadius: dates.length <= 2 ? 4 : (fs ? 3 : 2),
+                        pointHoverRadius: 6,
+                        borderWidth: fs ? 2.5 : 2
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2.8,
+                    maintainAspectRatio: !fs,
+                    aspectRatio: aspect,
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -632,20 +854,63 @@
                     },
                     scales: {
                         x: {
-                            ticks: { color: '#8896ab', maxRotation: 0, autoSkip: true, font: { size: 10 } },
-                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
+                            ticks: { color: cssVar('--chart-muted'), maxRotation: 0, autoSkip: true, font: { size: fs ? 12 : 10 } },
+                            grid: { color: cssVar('--chart-grid') }
                         },
                         y: {
                             beginAtZero: !!opts.beginAtZero,
                             ticks: {
-                                color: '#8896ab',
-                                font: { size: 10 },
+                                color: cssVar('--chart-muted'),
+                                font: { size: fs ? 12 : 10 },
                                 callback: opts.tick || ((v) => v)
                             },
-                            grid: { color: 'rgba(30, 45, 69, 0.9)' }
+                            grid: { color: cssVar('--chart-grid') }
                         }
                     }
                 }
+            });
+        }
+
+        function redrawFsChart() {
+            const dlg = document.getElementById('chartFsDialog');
+            if (!dlg || !dlg.open || !fsSourceId) return;
+            const d = chartSeries[fsSourceId];
+            if (!d) return;
+            drawLine('chart-fs', d.values, d.dates, d.opts);
+        }
+
+        function openChartFs(canvasId) {
+            const d = chartSeries[canvasId];
+            if (!d) return;
+            fsSourceId = canvasId;
+            const btn = document.querySelector(`.chart-fs-btn[data-canvas="${canvasId}"]`);
+            const box = btn && btn.closest('.chart-container');
+            const titleEl = box && box.querySelector('.chart-head .title, .chart-head .etf-jump');
+            const metaEl = box && box.querySelector('.chart-head .meta');
+            document.getElementById('chartFsTitle').textContent = (titleEl && titleEl.textContent.trim()) || '全屏查看';
+            document.getElementById('chartFsMeta').textContent = (metaEl && metaEl.textContent.trim()) || '';
+            const dlg = document.getElementById('chartFsDialog');
+            dlg.showModal();
+            window.requestAnimationFrame(() => {
+                redrawFsChart();
+            });
+        }
+
+        function bindChartFs() {
+            const dlg = document.getElementById('chartFsDialog');
+            document.addEventListener('click', (e) => {
+                const btn = e.target.closest('.chart-fs-btn');
+                if (!btn) return;
+                openChartFs(btn.dataset.canvas || '');
+            });
+            document.getElementById('chartFsClose').addEventListener('click', () => dlg.close());
+            dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+            dlg.addEventListener('close', () => {
+                if (charts['chart-fs']) {
+                    charts['chart-fs'].destroy();
+                    delete charts['chart-fs'];
+                }
+                fsSourceId = '';
             });
         }
 
@@ -692,6 +957,7 @@
                     tick: (v) => formatGrouped(Number(v), 0)
                 });
             });
+            redrawFsChart();
         }
 
         function setRange(key, { syncInputs = true } = {}) {
@@ -713,6 +979,11 @@
                 const label = `${displayName(code)}[${code}]`;
                 return `
                 <div class="chart-container">
+                    <button type="button" class="chart-fs-btn" data-canvas="chart-${code}" aria-label="全屏查看" title="全屏查看">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                        </svg>
+                    </button>
                     <div class="chart-head">
                         <button type="button" class="etf-jump" data-code="${escapeHtml(code)}" data-label="${escapeHtml(label)}" title="选择打开英为财情或雪球">${escapeHtml(label)}</button>
                         <span class="meta" id="meta-${code}">—</span>
@@ -744,13 +1015,11 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            if (typeof Chart !== 'undefined') {
-                Chart.defaults.color = '#8896ab';
-                Chart.defaults.borderColor = '#1e2d45';
-                Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
-            }
+            applyChartDefaults();
             bindNumToggle();
+            bindThemeToggle();
             bindJumpDialog();
+            bindChartFs();
             document.getElementById('hist-grid').addEventListener('click', (e) => {
                 const jump = e.target.closest('.etf-jump');
                 if (!jump) return;
@@ -830,6 +1099,17 @@
             empty.hidden = true;
             buildGrid();
             setRange('all');
+            let lastTier = screenTier();
+            window.addEventListener('resize', () => {
+                window.clearTimeout(window.__10etfResize);
+                window.__10etfResize = window.setTimeout(() => {
+                    const next = screenTier();
+                    if (next === lastTier) return;
+                    lastTier = next;
+                    applyChartDefaults();
+                    if (allDates.length) drawCharts();
+                }, 180);
+            });
         });
     </script>
 </body>
