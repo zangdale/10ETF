@@ -1,11 +1,11 @@
 {
-  "fetched_at": "2026-09-04T15:05:01",
+  "fetched_at": "2026-09-04T15:14:12",
   "date": "2026-09-04",
   "position": 0.0,
   "total": 306983.16,
   "float_profit": 10597.46,
   "total_value": 304430.0,
-  "available": 2552.16,
+  "available": 552.16,
   "items": [
     {
       "code": "520870",
@@ -115,13 +115,13 @@
       "code": "513870",
       "name": "纳指指数",
       "amount": 4200,
-      "available": 0,
+      "available": 4200,
       "cost": 1.884,
       "cost_value": 7912.8,
-      "price": 0.0,
-      "market_value": 0.0,
-      "pnl": -7912.8,
-      "pnl_pct": -100.0,
+      "price": 2.071,
+      "market_value": 8698.2,
+      "pnl": 785.4,
+      "pnl_pct": 9.93,
       "tiingo_name": "Fullgoal Fund Management Co Ltd"
     },
     {
