@@ -645,8 +645,8 @@
                 <span class="panel-sub">账户曲线在上，下方为各 ETF 持仓数量 · 数据来自 etf_hold/yyyy-mm-dd.json</span>
             </div>
             <div class="range-bar">
-                <button type="button" class="range-btn active" data-range="all">全部</button>
-                <button type="button" class="range-btn" data-range="month">本月</button>
+                <button type="button" class="range-btn" data-range="all">全部</button>
+                <button type="button" class="range-btn active" data-range="month">本月</button>
                 <button type="button" class="range-btn" data-range="year">本年</button>
                 <button type="button" class="range-btn" data-range="1y">一年</button>
                 <div class="range-dates">
@@ -899,7 +899,7 @@
         let accountByDate = {};
         let names = {};
         let allDates = [];
-        let activeRange = 'all';
+        let activeRange = 'month';
         const charts = {};
         const chartSeries = {};
         let fsSourceId = '';
@@ -1278,7 +1278,7 @@
             }
             empty.hidden = true;
             buildGrid();
-            setRange('all');
+            setRange('month');
             let lastTier = screenTier();
             window.addEventListener('resize', () => {
                 window.clearTimeout(window.__10etfResize);
