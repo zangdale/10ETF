@@ -37,6 +37,12 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
+        if path in ("/", "/index.html", "/index.htm"):
+            if path == "/":
+                self.send_response(302)
+                self.send_header("Location", "/index.html")
+                self.end_headers()
+                return
         if path in ("/etf_hold/index.json", "/etf_hold/index.json/"):
             body = json.dumps({"dates": hold_dates()}).encode("utf-8")
             self.send_response(200)

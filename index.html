@@ -12,6 +12,10 @@
             if (t !== 'light' && t !== 'dark') t = 'dark';
             document.documentElement.setAttribute('data-theme', t);
             document.documentElement.style.colorScheme = t;
+            var g = Number(localStorage.getItem('10etf-gate-ok'));
+            if (!Number.isFinite(g) || (Date.now() - g) >= 24 * 60 * 60 * 1000) {
+                document.documentElement.classList.add('gate-locked');
+            }
         })();
     </script>
     <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
@@ -473,6 +477,89 @@
             padding: 8px;
         }
         .jump-dialog-cancel:hover { color: var(--text-secondary); }
+        .jump-dialog.gate-dialog {
+            width: 100vw;
+            max-width: none;
+            height: 100dvh;
+            max-height: none;
+            margin: 0;
+            padding: 16px;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            inset: 0;
+        }
+        .jump-dialog.gate-dialog[open] {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gate-panel {
+            width: min(420px, calc(100vw - 32px));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 22px 22px 16px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+        }
+        .gate-dialog ol {
+            list-style: none;
+            margin: 12px 0 18px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .gate-dialog li {
+            display: grid;
+            grid-template-columns: 1.6rem 1fr;
+            gap: 8px 10px;
+            align-items: start;
+        }
+        .gate-dialog .gate-num {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: var(--gold);
+            line-height: 1.4;
+        }
+        .gate-dialog .gate-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+        .gate-dialog .gate-desc {
+            grid-column: 2;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+        .gate-dialog-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .gate-dialog-actions button {
+            flex: 1;
+            font: inherit;
+            font-size: 0.9rem;
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .gate-ok {
+            border: 1px solid rgba(201, 168, 76, 0.45);
+            background: var(--gold-dim);
+            color: var(--gold);
+        }
+        .gate-ok:hover { border-color: var(--gold); }
+        .gate-no {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .gate-no:hover { color: var(--text-primary); }
+        html.gate-locked body > *:not(#gateDialog) { visibility: hidden; }
         .panel-table thead th.col-code {
             position: sticky;
             left: 0;
@@ -672,6 +759,38 @@
         </div>
         <button type="button" class="jump-dialog-cancel" id="jumpDialogClose">取消</button>
     </dialog>
+    <dialog id="gateDialog" class="jump-dialog gate-dialog" aria-labelledby="gateDialogTitle">
+        <div class="gate-panel">
+            <h3 id="gateDialogTitle">作者「慢就是快」提醒您</h3>
+            <p class="jump-sub">请阅读并确认后再查看持仓</p>
+            <ol>
+                <li>
+                    <span class="gate-num">1</span>
+                    <span class="gate-title">保护本金</span>
+                    <span class="gate-desc">本金不能亏，先活着再赚钱</span>
+                </li>
+                <li>
+                    <span class="gate-num">2</span>
+                    <span class="gate-title">不上杠杆</span>
+                    <span class="gate-desc">只用闲钱投资，拒绝负债博弈</span>
+                </li>
+                <li>
+                    <span class="gate-num">3</span>
+                    <span class="gate-title">不追极值</span>
+                    <span class="gate-desc">卖不到最高，也买不到最低</span>
+                </li>
+                <li>
+                    <span class="gate-num">4</span>
+                    <span class="gate-title">控制仓位</span>
+                    <span class="gate-desc">不要梭哈，分批进退更稳</span>
+                </li>
+            </ol>
+            <div class="gate-dialog-actions">
+                <button type="button" class="gate-no" id="gateReject" onclick="window.__rejectGate&&window.__rejectGate()">关闭</button>
+                <button type="button" class="gate-ok" id="gateConfirm">确认</button>
+            </div>
+        </div>
+    </dialog>
 
     <script>
         const INVESTING_SLUG = {
@@ -720,6 +839,68 @@
             document.getElementById('jumpXueqiu').addEventListener('click', close);
         }
 
+        function rejectGate() {
+            try { window.stop(); } catch { /* ignore */ }
+            try { window.close(); } catch { /* ignore */ }
+            window.location.href = '/closed.html';
+        }
+
+        function bindGate() {
+            const GATE_KEY = '10etf-gate-ok';
+            const GATE_TTL_MS = 24 * 60 * 60 * 1000;
+            const dlg = document.getElementById('gateDialog');
+            if (!dlg || dlg.dataset.bound === '1') return;
+            const okAt = Number(localStorage.getItem(GATE_KEY));
+            if (Number.isFinite(okAt) && (Date.now() - okAt) < GATE_TTL_MS) {
+                document.documentElement.classList.remove('gate-locked');
+                dlg.dataset.bound = '1';
+                return;
+            }
+            dlg.dataset.bound = '1';
+            document.documentElement.classList.add('gate-locked');
+            let confirmed = false;
+            let exiting = false;
+            const exitPage = () => {
+                if (confirmed || exiting) return;
+                exiting = true;
+                try { if (dlg.open) dlg.close(); } catch { /* ignore */ }
+                rejectGate();
+            };
+            window.__rejectGate = exitPage;
+            dlg.addEventListener('cancel', (e) => {
+                e.preventDefault();
+                exitPage();
+            });
+            // 点提示框外（含系统 backdrop）一律退出
+            document.addEventListener('pointerdown', (e) => {
+                if (!dlg.open || confirmed || exiting) return;
+                const panel = dlg.querySelector('.gate-panel');
+                if (panel && !panel.contains(e.target)) exitPage();
+            }, true);
+            const confirmBtn = document.getElementById('gateConfirm');
+            const rejectBtn = document.getElementById('gateReject');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    confirmed = true;
+                    localStorage.setItem(GATE_KEY, String(Date.now()));
+                    document.documentElement.classList.remove('gate-locked');
+                    dlg.close();
+                });
+            }
+            if (rejectBtn) {
+                rejectBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    exitPage();
+                });
+            }
+            try { dlg.showModal(); } catch { dlg.setAttribute('open', ''); }
+        }
+
+        bindGate();
+
         function copyText(text) {
             const ta = document.createElement('textarea');
             ta.value = text;
@@ -749,6 +930,8 @@
 
         const NUM_GROUP_KEY = '10etf-num-group';
         const THEME_KEY = '10etf-theme';
+        const GATE_KEY = '10etf-gate-ok';
+        const GATE_TTL_MS = 24 * 60 * 60 * 1000;
         let numGroup = localStorage.getItem(NUM_GROUP_KEY) === 'qian' ? 'qian' : 'wan';
 
         function cssVar(name) {
@@ -1174,6 +1357,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
+            bindGate();
             applyChartDefaults();
             bindNumToggle();
             bindThemeToggle();
