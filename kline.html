@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0a0e17">
     <meta name="color-scheme" content="dark light">
-    <title>10ETF 历史持仓</title>
+    <title>10ETF 历史 K 线</title>
     <script>
         (function () {
             var t = localStorage.getItem('10etf-theme');
@@ -135,7 +135,7 @@
         }
         .brand-sep { color: var(--text-dim); margin: 0 4px; }
         .brand-sub { color: var(--gold); font-weight: 600; }
-        .nav-links { display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .nav-links a {
             padding: 6px 12px;
             border: 1px solid var(--border);
@@ -258,21 +258,9 @@
             box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
         }
         .jump-dialog::backdrop { background: var(--dialog-backdrop); }
-        .jump-dialog h3 {
-            margin: 0 0 4px;
-            font-size: 0.95rem;
-            font-weight: 600;
-        }
-        .jump-dialog .jump-sub {
-            margin: 0 0 16px;
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-        }
-        .jump-dialog-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+        .jump-dialog h3 { margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; }
+        .jump-dialog .jump-sub { margin: 0 0 16px; font-size: 0.78rem; color: var(--text-secondary); }
+        .jump-dialog-actions { display: flex; flex-direction: column; gap: 10px; }
         .jump-dialog-actions a {
             display: block;
             text-align: center;
@@ -347,21 +335,14 @@
             color: var(--gold);
             line-height: 1.4;
         }
-        .gate-dialog .gate-title {
-            font-weight: 600;
-            color: var(--text-primary);
-            line-height: 1.4;
-        }
+        .gate-dialog .gate-title { font-weight: 600; color: var(--text-primary); line-height: 1.4; }
         .gate-dialog .gate-desc {
             grid-column: 2;
             font-size: 0.82rem;
             color: var(--text-secondary);
             line-height: 1.45;
         }
-        .gate-dialog-actions {
-            display: flex;
-            gap: 10px;
-        }
+        .gate-dialog-actions { display: flex; gap: 10px; }
         .gate-dialog-actions button {
             flex: 1;
             font: inherit;
@@ -447,6 +428,36 @@
             font-size: 0.8rem;
             color-scheme: inherit;
         }
+        .info-table-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }
+        .info-table {
+            width: 100%;
+            min-width: 640px;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .info-table th {
+            background: var(--bg-secondary);
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 0.68rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .info-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+        .info-table tbody tr:last-child td { border-bottom: none; }
         .hist-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -454,10 +465,6 @@
         }
         @media (min-width: 720px) {
             .hist-grid { grid-template-columns: 1fr 1fr; }
-        }
-        @media (min-width: 1100px) {
-            #summary-grid.hist-grid { grid-template-columns: 1fr 1fr 1fr; }
-            #hist-grid.hist-grid { grid-template-columns: 1fr 1fr; }
         }
         .chart-container {
             background: var(--bg-card);
@@ -492,8 +499,6 @@
             margin-bottom: 6px;
             padding: 0 36px 0 4px;
         }
-        .chart-head a,
-        .chart-head .title,
         .chart-head .etf-jump {
             color: var(--text-primary);
             text-decoration: none;
@@ -506,7 +511,6 @@
             cursor: pointer;
             text-align: left;
         }
-        .chart-head a:hover,
         .chart-head .etf-jump:hover { color: var(--gold); }
         .chart-head .meta {
             font-family: var(--font-mono);
@@ -535,10 +539,7 @@
             margin-bottom: 8px;
             min-height: 36px;
         }
-        .chart-fs-bar .title {
-            font-size: 0.95rem;
-            font-weight: 600;
-        }
+        .chart-fs-bar .title { font-size: 0.95rem; font-weight: 600; }
         .chart-fs-bar .meta {
             font-family: var(--font-mono);
             font-size: 0.8rem;
@@ -559,10 +560,7 @@
             flex-shrink: 0;
         }
         .chart-fs-close:hover { color: var(--gold); }
-        .chart-fs-body {
-            height: calc(100dvh - 64px);
-            position: relative;
-        }
+        .chart-fs-body { height: calc(100dvh - 64px); position: relative; }
         .state-msg {
             padding: 28px 20px;
             text-align: center;
@@ -581,21 +579,14 @@
             :root { --container-pad: 18px; }
             .container { padding-top: 20px; }
         }
-        @media (max-width: 720px) {
-            .hist-grid { grid-template-columns: 1fr; }
-            .panel-sub { font-size: 0.7rem; }
-            .chart-container { padding: 12px 10px 8px; }
-        }
         @media (max-width: 640px) {
             html { font-size: 14px; }
             :root { --container-pad: 12px; }
             .brand { width: 100%; }
             .nav-links { width: 100%; }
-            .nav-links a { flex: 1; text-align: center; }
-            .range-btn { padding: 8px 12px; }
+            .nav-links a { flex: 1; text-align: center; font-size: 0.72rem; padding: 6px 8px; }
             .range-dates { width: 100%; }
             .range-dates input[type="date"] { min-width: 0; flex: 1; }
-            .jump-dialog { width: min(360px, calc(100vw - 24px)); padding: 18px 16px 14px; }
         }
     </style>
 </head>
@@ -605,21 +596,21 @@
             <div class="brand">
                 <span>10ETF 持仓</span>
                 <span class="brand-sep">·</span>
-                <span class="brand-sub">历史</span>
+                <span class="brand-sub">K 线</span>
             </div>
             <div class="nav-links" aria-label="栏目">
                 <a href="index.html">当前持仓</a>
-                <a href="history.html" class="active" aria-current="page">历史持仓</a>
-                <a href="kline.html">历史 K 线</a>
+                <a href="history.html">历史持仓</a>
+                <a href="kline.html" class="active" aria-current="page">历史 K 线</a>
             </div>
             <div class="topnav-meta">
                 <div class="topnav-chip">
-                    <span class="label">快照天数</span>
-                    <span class="val" id="nav-days">—</span>
+                    <span class="label">更新时间</span>
+                    <span class="val" id="nav-fetched">—</span>
                 </div>
                 <div class="topnav-chip">
                     <span class="label">筛选区间</span>
-                    <span class="val" id="nav-range">全部</span>
+                    <span class="val" id="nav-range">—</span>
                 </div>
                 <div class="num-toggle" role="group" aria-label="金额分位">
                     <button type="button" data-group="wan">万分位</button>
@@ -642,64 +633,35 @@
         <section class="panel">
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
-                <h2 class="panel-title">历史持仓</h2>
-                <span class="panel-sub">账户曲线在上，下方为各 ETF 持仓数量 · 数据来自 etf_hold/yyyy-mm-dd.json</span>
+                <h2 class="panel-title">历史日 K</h2>
+                <span class="panel-sub">收盘价折线 · 数据来自 Tiingo </span>
             </div>
             <div class="range-bar">
                 <button type="button" class="range-btn" data-range="all">全部</button>
-                <button type="button" class="range-btn active" data-range="month">本月</button>
-                <button type="button" class="range-btn" data-range="year">本年</button>
+                <button type="button" class="range-btn active" data-range="year">本年</button>
                 <button type="button" class="range-btn" data-range="1y">一年</button>
+                <button type="button" class="range-btn" data-range="month">本月</button>
                 <div class="range-dates">
                     <label>从 <input type="date" id="range-from"></label>
                     <label>至 <input type="date" id="range-to"></label>
                 </div>
             </div>
-            <p id="hist-empty" class="state-msg" hidden>暂无历史快照，请先执行 make hold。</p>
-            <div id="summary-grid" class="hist-grid">
-                <div class="chart-container">
-                    <button type="button" class="chart-fs-btn" data-canvas="chart-acct-total" aria-label="全屏查看" title="全屏查看">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
-                        </svg>
-                    </button>
-                    <div class="chart-head">
-                        <span class="title">总资产变化</span>
-                        <span class="meta" id="meta-acct-total">—</span>
-                    </div>
-                    <canvas id="chart-acct-total"></canvas>
-                </div>
-                <div class="chart-container">
-                    <button type="button" class="chart-fs-btn" data-canvas="chart-acct-pnl" aria-label="全屏查看" title="全屏查看">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
-                        </svg>
-                    </button>
-                    <div class="chart-head">
-                        <span class="title">总浮动盈亏</span>
-                        <span class="meta" id="meta-acct-pnl">—</span>
-                    </div>
-                    <canvas id="chart-acct-pnl"></canvas>
-                </div>
-                <div class="chart-container">
-                    <button type="button" class="chart-fs-btn" data-canvas="chart-acct-pnl-pct" aria-label="全屏查看" title="全屏查看">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
-                        </svg>
-                    </button>
-                    <div class="chart-head">
-                        <span class="title">总浮动盈亏%</span>
-                        <span class="meta" id="meta-acct-pnl-pct">—</span>
-                    </div>
-                    <canvas id="chart-acct-pnl-pct"></canvas>
-                </div>
+            <p id="kline-empty" class="state-msg" hidden>暂无 K 线数据，请先执行 make kline。</p>
+            <div id="info-wrap" class="info-table-wrap" hidden>
+                <table class="info-table">
+                    <thead>
+                        <tr>
+                            <th>代码</th>
+                            <th>名称</th>
+                            <th>起始</th>
+                            <th>结束</th>
+                            <th>条数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="info-body"></tbody>
+                </table>
             </div>
-            <div class="panel-head" style="margin-top: 28px;">
-                <span class="accent-line" aria-hidden="true"></span>
-                <h2 class="panel-title">分 ETF 持仓</h2>
-                <span class="panel-sub">纵轴为持仓数量</span>
-            </div>
-            <div id="hist-grid" class="hist-grid"></div>
+            <div id="kline-grid" class="hist-grid"></div>
         </section>
     </main>
     <footer class="site-footer">
@@ -720,26 +682,10 @@
             <h3 id="gateDialogTitle">作者「慢就是快」提醒您</h3>
             <p class="jump-sub">请阅读并确认后再查看持仓</p>
             <ol>
-                <li>
-                    <span class="gate-num">1</span>
-                    <span class="gate-title">保护本金</span>
-                    <span class="gate-desc">本金不能亏，先活着再赚钱</span>
-                </li>
-                <li>
-                    <span class="gate-num">2</span>
-                    <span class="gate-title">不上杠杆</span>
-                    <span class="gate-desc">只用闲钱投资，拒绝负债博弈</span>
-                </li>
-                <li>
-                    <span class="gate-num">3</span>
-                    <span class="gate-title">不追极值</span>
-                    <span class="gate-desc">卖不到最高，也买不到最低</span>
-                </li>
-                <li>
-                    <span class="gate-num">4</span>
-                    <span class="gate-title">控制仓位</span>
-                    <span class="gate-desc">不要梭哈，分批进退更稳</span>
-                </li>
+                <li><span class="gate-num">1</span><span class="gate-title">保护本金</span><span class="gate-desc">本金不能亏，先活着再赚钱</span></li>
+                <li><span class="gate-num">2</span><span class="gate-title">不上杠杆</span><span class="gate-desc">只用闲钱投资，拒绝负债博弈</span></li>
+                <li><span class="gate-num">3</span><span class="gate-title">不追极值</span><span class="gate-desc">卖不到最高，也买不到最低</span></li>
+                <li><span class="gate-num">4</span><span class="gate-title">控制仓位</span><span class="gate-desc">不要梭哈，分批进退更稳</span></li>
             </ol>
             <div class="gate-dialog-actions">
                 <button type="button" class="gate-no" id="gateReject" onclick="window.__rejectGate&&window.__rejectGate()">关闭</button>
@@ -763,13 +709,9 @@
     </dialog>
 
     <script>
-        const ETF_CODES = [
-            '561580', '511360', '159985', '515180', '511010',
-            '520870', '513650', '518680', '159307', '513870'
-        ];
-        const INVESTING_SLUG = { '511010': 'guotai-sse-deliverable-5-tb' };
         const NAME_OVERRIDE = { '515180': '中证红利' };
-        const RANGE_LABEL = { all: '全部', month: '本月', year: '本年', '1y': '一年', custom: '自定义' };
+        const INVESTING_SLUG = { '511010': 'guotai-sse-deliverable-5-tb' };
+        const RANGE_LABEL = { all: '全部', year: '本年', '1y': '一年', month: '本月', custom: '自定义' };
         const LINE_COLORS = [
             'rgba(201, 168, 76, 0.95)',
             'rgba(59, 138, 138, 0.95)',
@@ -783,21 +725,32 @@
             'rgba(156, 39, 176, 0.8)'
         ];
 
+        let infoItems = [];
+        let infoByCode = {};
+        let barsByCode = {};
+        let activeRange = 'year';
+        let loading = false;
+        const charts = {};
+        const chartSeries = {};
+        let fsSourceId = '';
+
         function ymd(d) {
             const y = d.getFullYear();
             const m = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${y}-${m}-${day}`;
         }
+        function displayName(code) {
+            const row = infoByCode[code];
+            return NAME_OVERRIDE[code] || (row && row.name) || code;
+        }
         function investingUrl(code) {
-            const c = String(code || '').trim();
-            const slug = INVESTING_SLUG[c] || c;
+            const slug = INVESTING_SLUG[code] || code;
             return `https://cn.investing.com/etfs/${encodeURIComponent(slug)}`;
         }
         function xueqiuUrl(code) {
-            const c = String(code || '').trim();
-            const exch = c.startsWith('1') ? 'SZ' : 'SH';
-            return `https://xueqiu.com/S/${exch}${c}`;
+            const exch = String(code).startsWith('1') ? 'SZ' : 'SH';
+            return `https://xueqiu.com/S/${exch}${code}`;
         }
         function openJumpDialog(code, label) {
             const dlg = document.getElementById('jumpDialog');
@@ -841,37 +794,27 @@
                 rejectGate();
             };
             window.__rejectGate = exitPage;
-            dlg.addEventListener('cancel', (e) => {
-                e.preventDefault();
-                exitPage();
-            });
+            dlg.addEventListener('cancel', (e) => { e.preventDefault(); exitPage(); });
             document.addEventListener('pointerdown', (e) => {
                 if (!dlg.open || confirmed || exiting) return;
                 const panel = dlg.querySelector('.gate-panel');
                 if (panel && !panel.contains(e.target)) exitPage();
             }, true);
-            const confirmBtn = document.getElementById('gateConfirm');
-            const rejectBtn = document.getElementById('gateReject');
-            if (confirmBtn) {
-                confirmBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    confirmed = true;
-                    localStorage.setItem(GATE_KEY, String(Date.now()));
-                    document.documentElement.classList.remove('gate-locked');
-                    dlg.close();
-                });
-            }
-            if (rejectBtn) {
-                rejectBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    exitPage();
-                });
-            }
+            document.getElementById('gateConfirm').addEventListener('click', (e) => {
+                e.preventDefault();
+                confirmed = true;
+                localStorage.setItem(GATE_KEY, String(Date.now()));
+                document.documentElement.classList.remove('gate-locked');
+                dlg.close();
+            });
+            document.getElementById('gateReject').addEventListener('click', (e) => {
+                e.preventDefault();
+                exitPage();
+            });
             try { dlg.showModal(); } catch { dlg.setAttribute('open', ''); }
         }
         bindGate();
+
         function escapeHtml(s) {
             return String(s)
                 .replace(/&/g, '&amp;')
@@ -879,6 +822,7 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
         }
+
         function rangeBounds(key) {
             const now = new Date();
             const end = ymd(now);
@@ -896,34 +840,8 @@
             return { from: '', to: '' };
         }
 
-        let seriesByCode = {};
-        let accountByDate = {};
-        let names = {};
-        let allDates = [];
-        let activeRange = 'month';
-        const charts = {};
-        const chartSeries = {};
-        let fsSourceId = '';
-
-        function displayName(code) {
-            return NAME_OVERRIDE[code] || names[code] || code;
-        }
-
-        function fillOf(border) {
-            return border.replace(/[\d.]+\)$/, '0.12)');
-        }
-
-        function lastFinite(values) {
-            for (let i = values.length - 1; i >= 0; i--) {
-                if (Number.isFinite(values[i])) return values[i];
-            }
-            return NaN;
-        }
-
         const NUM_GROUP_KEY = '10etf-num-group';
         const THEME_KEY = '10etf-theme';
-        const GATE_KEY = '10etf-gate-ok';
-        const GATE_TTL_MS = 24 * 60 * 60 * 1000;
         let numGroup = localStorage.getItem(NUM_GROUP_KEY) === 'qian' ? 'qian' : 'wan';
 
         function cssVar(name) {
@@ -941,19 +859,15 @@
             document.documentElement.style.colorScheme = t;
             const meta = document.querySelector('meta[name="theme-color"]');
             if (meta) meta.content = t === 'light' ? '#f5f7fa' : '#0a0e17';
-            const btn = document.getElementById('themeToggle');
-            if (btn) btn.setAttribute('aria-label', t === 'light' ? '切换到黑色主题' : '切换到白色主题');
             if (persist) localStorage.setItem(THEME_KEY, t);
         }
         function bindThemeToggle() {
             applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark', { persist: false });
-            const btn = document.getElementById('themeToggle');
-            if (!btn) return;
-            btn.addEventListener('click', () => {
+            document.getElementById('themeToggle').addEventListener('click', () => {
                 const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
                 applyTheme(next);
                 applyChartDefaults();
-                if (allDates.length) drawCharts();
+                drawCharts();
             });
         }
 
@@ -972,18 +886,74 @@
             if (fracDigits > 0) out += '.' + frac;
             return (neg ? '-' : '') + out;
         }
-
-        function yen(n) {
+        function priceFmt(n) {
             if (!Number.isFinite(n)) return '—';
-            return '¥ ' + formatGrouped(n, 2);
+            return formatGrouped(n, 3);
+        }
+        function volFmt(n) {
+            if (!Number.isFinite(n)) return '—';
+            return formatGrouped(n, 0);
         }
 
-        function filterDates() {
-            const fromEl = document.getElementById('range-from');
-            const toEl = document.getElementById('range-to');
-            const from = fromEl.value;
-            const to = toEl.value;
-            return allDates.filter((d) => (!from || d >= from) && (!to || d <= to));
+        function syncNumToggle() {
+            document.querySelectorAll('.num-toggle button').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.group === numGroup);
+            });
+        }
+        function bindNumToggle() {
+            syncNumToggle();
+            document.querySelectorAll('.num-toggle button').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const g = btn.dataset.group;
+                    if (g !== 'wan' && g !== 'qian') return;
+                    numGroup = g;
+                    localStorage.setItem(NUM_GROUP_KEY, numGroup);
+                    syncNumToggle();
+                    drawCharts();
+                });
+            });
+        }
+
+        function filterRange() {
+            const from = document.getElementById('range-from').value;
+            const to = document.getElementById('range-to').value;
+            return { from, to };
+        }
+
+        function yearsForRange(from, to, years) {
+            const list = Array.isArray(years) ? years : [];
+            if (!from && !to) return list;
+            const startYear = from ? Number(from.slice(0, 4)) : Math.min(...list);
+            const endYear = to ? Number(to.slice(0, 4)) : Math.max(...list);
+            return list.filter((y) => y >= startYear && y <= endYear);
+        }
+
+        async function loadBarsForCode(code, from, to) {
+            const info = infoByCode[code];
+            if (!info || !info.rows) return [];
+            const cacheKey = `${code}|${from}|${to}`;
+            if (barsByCode[cacheKey]) return barsByCode[cacheKey];
+            const years = yearsForRange(from, to, info.years);
+            const chunks = await Promise.all(years.map(async (year) => {
+                try {
+                    const r = await fetch(`kline/${year}/${code}.json`, { cache: 'no-store' });
+                    if (!r.ok) return [];
+                    const data = await r.json();
+                    return Array.isArray(data.items) ? data.items : [];
+                } catch {
+                    return [];
+                }
+            }));
+            let bars = chunks.flat();
+            bars.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+            if (from) bars = bars.filter((b) => b.date >= from);
+            if (to) bars = bars.filter((b) => b.date <= to);
+            barsByCode[cacheKey] = bars;
+            return bars;
+        }
+
+        function fillOf(border) {
+            return border.replace(/[\d.]+\)$/, '0.12)');
         }
 
         function screenTier() {
@@ -993,16 +963,16 @@
             return 'lg';
         }
 
-        function drawLine(canvasId, values, dates, opts) {
+        function drawLine(canvasId, bars, opts) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
+            const dates = bars.map((b) => b.date);
+            const values = bars.map((b) => Number(b.close));
             if (canvasId !== 'chart-fs') {
-                chartSeries[canvasId] = { values, dates, opts };
+                chartSeries[canvasId] = { bars, opts };
             }
             if (charts[canvasId]) charts[canvasId].destroy();
-            const border = opts.color;
             const tier = screenTier();
-            const aspect = tier === 'sm' ? 1.7 : (tier === 'md' ? 2.1 : 2.8);
             const fs = canvasId === 'chart-fs';
             charts[canvasId] = new Chart(canvas.getContext('2d'), {
                 type: 'line',
@@ -1010,25 +980,36 @@
                     labels: dates,
                     datasets: [{
                         data: values.map((v) => (Number.isFinite(v) ? v : null)),
-                        borderColor: border,
-                        backgroundColor: fillOf(border),
+                        borderColor: opts.color,
+                        backgroundColor: fillOf(opts.color),
                         fill: true,
-                        tension: 0.25,
+                        tension: 0.2,
                         spanGaps: true,
-                        pointRadius: dates.length <= 2 ? 4 : (fs ? 3 : 2),
-                        pointHoverRadius: 6,
+                        pointRadius: dates.length <= 2 ? 4 : (fs ? 2 : 0),
+                        pointHoverRadius: 5,
                         borderWidth: fs ? 2.5 : 2
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: !fs,
-                    aspectRatio: aspect,
+                    aspectRatio: tier === 'sm' ? 1.7 : (tier === 'md' ? 2.1 : 2.6),
                     plugins: {
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => opts.tooltip(ctx.parsed.y)
+                                title: (items) => items[0] && items[0].label ? items[0].label : '',
+                                label: (ctx) => {
+                                    const bar = bars[ctx.dataIndex];
+                                    if (!bar) return '';
+                                    return [
+                                        `收 ${priceFmt(Number(bar.close))}`,
+                                        `开 ${priceFmt(Number(bar.open))}`,
+                                        `高 ${priceFmt(Number(bar.high))}`,
+                                        `低 ${priceFmt(Number(bar.low))}`,
+                                        `量 ${volFmt(Number(bar.volume))}`
+                                    ];
+                                }
                             }
                         }
                     },
@@ -1038,11 +1019,10 @@
                             grid: { color: cssVar('--chart-grid') }
                         },
                         y: {
-                            beginAtZero: !!opts.beginAtZero,
                             ticks: {
                                 color: cssVar('--chart-muted'),
                                 font: { size: fs ? 12 : 10 },
-                                callback: opts.tick || ((v) => v)
+                                callback: (v) => priceFmt(Number(v))
                             },
                             grid: { color: cssVar('--chart-grid') }
                         }
@@ -1051,37 +1031,25 @@
             });
         }
 
-        function redrawFsChart() {
-            const dlg = document.getElementById('chartFsDialog');
-            if (!dlg || !dlg.open || !fsSourceId) return;
-            const d = chartSeries[fsSourceId];
-            if (!d) return;
-            drawLine('chart-fs', d.values, d.dates, d.opts);
-        }
-
         function openChartFs(canvasId) {
             const d = chartSeries[canvasId];
             if (!d) return;
             fsSourceId = canvasId;
-            const btn = document.querySelector(`.chart-fs-btn[data-canvas="${canvasId}"]`);
-            const box = btn && btn.closest('.chart-container');
-            const titleEl = box && box.querySelector('.chart-head .title, .chart-head .etf-jump');
-            const metaEl = box && box.querySelector('.chart-head .meta');
-            document.getElementById('chartFsTitle').textContent = (titleEl && titleEl.textContent.trim()) || '全屏查看';
-            document.getElementById('chartFsMeta').textContent = (metaEl && metaEl.textContent.trim()) || '';
+            const box = document.querySelector(`.chart-fs-btn[data-canvas="${canvasId}"]`)?.closest('.chart-container');
+            const titleEl = box?.querySelector('.chart-head .etf-jump');
+            const metaEl = box?.querySelector('.chart-head .meta');
+            document.getElementById('chartFsTitle').textContent = titleEl?.textContent.trim() || '全屏查看';
+            document.getElementById('chartFsMeta').textContent = metaEl?.textContent.trim() || '';
             const dlg = document.getElementById('chartFsDialog');
             dlg.showModal();
-            window.requestAnimationFrame(() => {
-                redrawFsChart();
-            });
+            window.requestAnimationFrame(() => drawLine('chart-fs', d.bars, d.opts));
         }
 
         function bindChartFs() {
             const dlg = document.getElementById('chartFsDialog');
             document.addEventListener('click', (e) => {
                 const btn = e.target.closest('.chart-fs-btn');
-                if (!btn) return;
-                openChartFs(btn.dataset.canvas || '');
+                if (btn) openChartFs(btn.dataset.canvas || '');
             });
             document.getElementById('chartFsClose').addEventListener('click', () => dlg.close());
             dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
@@ -1094,68 +1062,10 @@
             });
         }
 
-        function drawCharts() {
-            const dates = filterDates();
-            document.getElementById('nav-range').textContent = RANGE_LABEL[activeRange] || '自定义';
-
-            const totals = dates.map((d) => accountByDate[d]?.total);
-            const pnls = dates.map((d) => accountByDate[d]?.pnl);
-            const pcts = dates.map((d) => accountByDate[d]?.pnlPct);
-            document.getElementById('meta-acct-total').textContent = yen(lastFinite(totals));
-            document.getElementById('meta-acct-pnl').textContent = yen(lastFinite(pnls));
-            const lastPct = lastFinite(pcts);
-            document.getElementById('meta-acct-pnl-pct').textContent =
-                Number.isFinite(lastPct) ? lastPct.toFixed(2) + '%' : '—';
-
-            const yenTick = (v) => formatGrouped(Number(v), 0);
-            drawLine('chart-acct-total', totals, dates, {
-                color: 'rgba(201, 168, 76, 0.95)',
-                tooltip: (y) => '总资产 ' + yen(y),
-                tick: yenTick
-            });
-            drawLine('chart-acct-pnl', pnls, dates, {
-                color: 'rgba(244, 67, 54, 0.75)',
-                tooltip: (y) => '浮动盈亏 ' + yen(y),
-                tick: yenTick
-            });
-            drawLine('chart-acct-pnl-pct', pcts, dates, {
-                color: 'rgba(59, 138, 138, 0.95)',
-                tooltip: (y) => Number.isFinite(y) ? '浮动盈亏% ' + y.toFixed(2) + '%' : '—',
-                tick: (v) => Number(v).toFixed(1) + '%'
-            });
-
-            ETF_CODES.forEach((code, i) => {
-                const map = seriesByCode[code] || {};
-                const values = dates.map((d) => (d in map ? map[d] : 0));
-                const last = values.length ? values[values.length - 1] : 0;
-                const meta = document.getElementById(`meta-${code}`);
-                if (meta) meta.textContent = dates.length ? formatGrouped(last, 0) : '—';
-                drawLine(`chart-${code}`, values, dates, {
-                    color: LINE_COLORS[i % LINE_COLORS.length],
-                    tooltip: (y) => '持仓 ' + formatGrouped(Number(y), 0),
-                    beginAtZero: true,
-                    tick: (v) => formatGrouped(Number(v), 0)
-                });
-            });
-            redrawFsChart();
-        }
-
-        function setRange(key, { syncInputs = true } = {}) {
-            activeRange = key;
-            document.querySelectorAll('.range-btn').forEach((btn) => {
-                btn.classList.toggle('active', btn.dataset.range === key);
-            });
-            if (syncInputs) {
-                const b = rangeBounds(key);
-                document.getElementById('range-from').value = b.from;
-                document.getElementById('range-to').value = b.to;
-            }
-            drawCharts();
-        }
-
         function buildGrid() {
-            const grid = document.getElementById('hist-grid');
-            grid.innerHTML = ETF_CODES.map((code) => {
+            const grid = document.getElementById('kline-grid');
+            grid.innerHTML = infoItems.map((row, i) => {
+                const code = row.code;
                 const label = `${displayName(code)}[${code}]`;
                 return `
                 <div class="chart-container">
@@ -1169,29 +1079,50 @@
                         <span class="meta" id="meta-${code}">—</span>
                     </div>
                     <canvas id="chart-${code}"></canvas>
-                </div>
-            `;
+                </div>`;
             }).join('');
         }
 
-        function syncNumToggle() {
-            document.querySelectorAll('.num-toggle button').forEach((btn) => {
-                btn.classList.toggle('active', btn.dataset.group === numGroup);
-            });
+        function renderInfoTable() {
+            const body = document.getElementById('info-body');
+            body.innerHTML = infoItems.map((row) => `
+                <tr>
+                    <td class="mono">${escapeHtml(row.code)}</td>
+                    <td>${escapeHtml(displayName(row.code))}</td>
+                    <td class="mono">${escapeHtml(row.start || '—')}</td>
+                    <td class="mono">${escapeHtml(row.end || '—')}</td>
+                    <td class="mono">${Number.isFinite(row.rows) ? formatGrouped(row.rows, 0) : '—'}</td>
+                </tr>
+            `).join('');
+            document.getElementById('info-wrap').hidden = !infoItems.length;
         }
 
-        function bindNumToggle() {
-            syncNumToggle();
-            document.querySelectorAll('.num-toggle button').forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    const g = btn.dataset.group;
-                    if (g !== 'wan' && g !== 'qian') return;
-                    numGroup = g;
-                    localStorage.setItem(NUM_GROUP_KEY, numGroup);
-                    syncNumToggle();
-                    if (allDates.length) drawCharts();
-                });
+        async function drawCharts() {
+            if (loading || !infoItems.length) return;
+            const { from, to } = filterRange();
+            document.getElementById('nav-range').textContent = RANGE_LABEL[activeRange] || '自定义';
+            await Promise.all(infoItems.map(async (row, i) => {
+                const code = row.code;
+                const bars = await loadBarsForCode(code, from, to);
+                const last = bars.length ? Number(bars[bars.length - 1].close) : NaN;
+                const meta = document.getElementById(`meta-${code}`);
+                if (meta) meta.textContent = bars.length ? priceFmt(last) : '无数据';
+                drawLine(`chart-${code}`, bars, { color: LINE_COLORS[i % LINE_COLORS.length] });
+            }));
+        }
+
+        function setRange(key, { syncInputs = true } = {}) {
+            activeRange = key;
+            document.querySelectorAll('.range-btn').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.range === key);
             });
+            if (syncInputs) {
+                const b = rangeBounds(key);
+                document.getElementById('range-from').value = b.from;
+                document.getElementById('range-to').value = b.to;
+            }
+            barsByCode = {};
+            drawCharts();
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1201,11 +1132,13 @@
             bindThemeToggle();
             bindJumpDialog();
             bindChartFs();
-            document.getElementById('hist-grid').addEventListener('click', (e) => {
+
+            document.getElementById('kline-grid').addEventListener('click', (e) => {
                 const jump = e.target.closest('.etf-jump');
                 if (!jump) return;
                 openJumpDialog(jump.dataset.code || '', jump.dataset.label || jump.textContent);
             });
+
             document.querySelectorAll('.range-btn').forEach((btn) => {
                 btn.addEventListener('click', () => setRange(btn.dataset.range));
             });
@@ -1214,83 +1147,32 @@
             const onCustom = () => {
                 activeRange = 'custom';
                 document.querySelectorAll('.range-btn').forEach((b) => b.classList.remove('active'));
+                barsByCode = {};
                 drawCharts();
             };
             fromEl.addEventListener('change', onCustom);
             toEl.addEventListener('change', onCustom);
 
-            let dates = [];
+            let info = null;
             try {
-                const r = await fetch('etf_hold/index.json', { cache: 'no-store' });
-                if (r.ok) {
-                    const d = await r.json();
-                    dates = Array.isArray(d.dates) ? d.dates : (Array.isArray(d) ? d : []);
-                }
+                const r = await fetch('kline/info.json', { cache: 'no-store' });
+                if (r.ok) info = await r.json();
             } catch { /* ignore */ }
 
-            const empty = document.getElementById('hist-empty');
-            const summary = document.getElementById('summary-grid');
-            if (!dates.length) {
-                empty.hidden = false;
-                summary.hidden = true;
-                document.getElementById('nav-days').textContent = '0';
-                return;
-            }
-
-            const payloads = await Promise.all(dates.map(async (day) => {
-                try {
-                    const r = await fetch(`etf_hold/${day}.json`, { cache: 'no-store' });
-                    if (!r.ok) return null;
-                    return { day, data: await r.json() };
-                } catch {
-                    return null;
-                }
-            }));
-
-            allDates = [];
-            seriesByCode = Object.fromEntries(ETF_CODES.map((c) => [c, {}]));
-            accountByDate = {};
-            names = {};
-            for (const row of payloads) {
-                if (!row || !row.data) continue;
-                const day = row.data.date || row.day;
-                allDates.push(day);
-                const items = Array.isArray(row.data.items) ? row.data.items : [];
-                const costSum = items.reduce((s, it) => s + (Number(it.cost_value) || 0), 0);
-                const pnl = Number(row.data.float_profit);
-                accountByDate[day] = {
-                    total: Number(row.data.total),
-                    pnl,
-                    pnlPct: costSum > 0 && Number.isFinite(pnl) ? (pnl / costSum) * 100 : NaN
-                };
-                for (const it of items) {
-                    const code = String(it.code || '').trim();
-                    if (!seriesByCode[code]) continue;
-                    seriesByCode[code][day] = Number(it.amount) || 0;
-                    const n = NAME_OVERRIDE[code] || String(it.name || '').trim();
-                    if (n) names[code] = n;
-                }
-            }
-            allDates = [...new Set(allDates)].sort();
-            document.getElementById('nav-days').textContent = String(allDates.length);
-            if (!allDates.length) {
+            const empty = document.getElementById('kline-empty');
+            if (!info || !Array.isArray(info.items) || !info.items.length) {
                 empty.hidden = false;
                 return;
             }
+
+            infoItems = info.items.filter((row) => row && row.code);
+            infoByCode = Object.fromEntries(infoItems.map((row) => [row.code, row]));
+            document.getElementById('nav-fetched').textContent = info.fetched_at || '—';
             empty.hidden = true;
+            renderInfoTable();
             buildGrid();
-            setRange('month');
-            let lastTier = screenTier();
-            window.addEventListener('resize', () => {
-                window.clearTimeout(window.__10etfResize);
-                window.__10etfResize = window.setTimeout(() => {
-                    const next = screenTier();
-                    if (next === lastTier) return;
-                    lastTier = next;
-                    applyChartDefaults();
-                    if (allDates.length) drawCharts();
-                }, 180);
-            });
+            loading = false;
+            setRange('year');
         });
     </script>
 </body>

@@ -1,4 +1,4 @@
-.PHONY: hold serve
+.PHONY: hold kline serve
 
 PORT ?= 8080
 
@@ -20,6 +20,19 @@ hold:
 	fi
 	@test -x "$(ADB_PATH)" || (echo "找不到可执行文件: $(ADB_PATH)" && exit 1)
 	python3 fetch_hold.py
+
+# 从 Tiingo 拉取 10 只 ETF 日 K，写入 kline/yyyy/code.json 与 kline/info.json
+# 默认增量；全量：make kline FULL=1
+kline:
+	@if [ ! -f .env ]; then \
+		echo "未找到 .env，请创建该文件并配置 TIINGO_API_KEY"; \
+		exit 1; \
+	fi
+	@if [ -z "$(strip $(TIINGO_API_KEY))" ]; then \
+		echo "未配置 TIINGO_API_KEY，请在 .env 中设置"; \
+		exit 1; \
+	fi
+	python3 kline.py $(if $(FULL),--full,)
 
 # 本地预览：前台运行 serve.py（Ctrl+C 结束）
 serve:

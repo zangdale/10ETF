@@ -1,6 +1,6 @@
 # 10ETF
 
-单页持仓展示：`index.html` 读取根目录 **`etf_hold.json`**。历史折线见 **`history.html`**（`etf_hold/*.json`）。
+单页持仓展示：`index.html` 读取根目录 **`etf_hold.json`**。历史折线见 **`history.html`**（`etf_hold/*.json`）。历史日 K 见 **`kline.html`**（`kline/yyyy/code.json`）。
 
 ## 拉取持仓
 
@@ -16,6 +16,23 @@ make hold
 - `etf_hold/yyyy-mm-dd.json`：当日历史（同日多次运行会覆盖；历史持仓页按日期画折线）
 - `etf_hold/index.json`：历史日期清单（本地 `serve.py` 也会按目录动态列出）
 
+## 拉取日 K
+
+`.env` 中配置 `TIINGO_API_KEY` 后：
+
+```bash
+make kline
+```
+
+默认**增量**：读取 `kline/info.json` 与已有年份文件，只拉取本地 `end` 之后的新 K 线并合并；某只 ETF 无本地数据时自动全量。强制全量重拉：
+
+```bash
+make kline FULL=1
+```
+
+- `kline/yyyy/code.json`：按年保存的日 K（open/high/low/close/volume）
+- `kline/info.json`：每只 ETF 的数据起止日期与条数
+
 ## 本地预览
 
 ```bash
@@ -26,4 +43,4 @@ make serve
 
 ## 部署
 
-GitHub Actions 将根目录 `*.html`、`etf_hold.json` 与 `etf_hold/` 复制到 `dist/` 后部署 Cloudflare Pages（项目名示例：`10etf`）。
+GitHub Actions 将根目录 `*.html`、`etf_hold.json`、`etf_hold/` 与 `kline/` 复制到 `dist/` 后部署 Cloudflare Pages（项目名示例：`10etf`）。
