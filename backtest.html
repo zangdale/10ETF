@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="color-scheme" content="dark light">
+    <title>10ETF 组合回测</title>
+    <script>
+        (function () {
+            var t = localStorage.getItem('10etf-theme');
+            if (t !== 'light' && t !== 'dark') t = 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.style.colorScheme = t;
+            var g = Number(localStorage.getItem('10etf-gate-ok'));
+            if (!Number.isFinite(g) || (Date.now() - g) >= 24 * 60 * 60 * 1000) {
+                document.documentElement.classList.add('gate-locked');
+            }
+        })();
+    </script>
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="nav.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --border: #1e2d45;
+            --gold: #c9a84c;
+            --gold-dim: rgba(201, 168, 76, 0.15);
+            --teal: #3b8a8a;
+            --good: #4caf50;
+            --bad: #f44336;
+            --text-primary: #e8edf5;
+            --text-secondary: #8896ab;
+            --text-dim: #5a6678;
+            --overlay-nav-bg: rgba(10, 14, 23, 0.85);
+            --overlay-grid: rgba(59, 138, 138, 0.03);
+            --dialog-backdrop: rgba(10, 14, 23, 0.72);
+            --chart-muted: #8896ab;
+            --chart-grid: rgba(30, 45, 69, 0.9);
+            --theme-btn-bg: #2a3448;
+            --theme-btn-fg: #e8edf5;
+            --radius-2xl: 12px;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+            --container-max: 1200px;
+            --container-pad: 24px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+        html[data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --border: #d8dee8;
+            --gold: #b8922e;
+            --gold-dim: rgba(184, 146, 46, 0.14);
+            --text-primary: #1a2332;
+            --text-secondary: #5a6678;
+            --text-dim: #8a94a3;
+            --overlay-nav-bg: rgba(245, 247, 250, 0.9);
+            --overlay-grid: rgba(59, 138, 138, 0.07);
+            --dialog-backdrop: rgba(26, 35, 50, 0.38);
+            --chart-muted: #5a6678;
+            --chart-grid: rgba(200, 208, 220, 0.95);
+            --theme-btn-bg: #e8ecf2;
+            --theme-btn-fg: #1a2332;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 15px; -webkit-text-size-adjust: 100%; }
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            padding-top: calc(var(--nav-height) + var(--safe-top));
+            padding-bottom: max(16px, var(--safe-bottom));
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(var(--overlay-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--overlay-grid) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+        }
+        .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+        .container {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 28px var(--container-pad) 40px;
+            position: relative;
+            z-index: 1;
+        }
+        .panel { margin-bottom: 28px; }
+        .panel-head {
+            display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 16px;
+        }
+        .panel-head .accent-line {
+            width: 48px; height: 2px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+            align-self: center;
+        }
+        .panel-title {
+            font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em;
+            text-transform: uppercase; margin: 0;
+        }
+        .panel-sub { font-size: 0.78rem; color: var(--text-dim); }
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+            align-items: start;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            padding: 16px;
+        }
+        .form-row {
+            display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 14px;
+        }
+        .form-row label { font-size: 0.78rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px; }
+        .form-row input[type="date"],
+        .form-row input[type="number"],
+        .form-row select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            min-width: 0;
+            color-scheme: inherit;
+        }
+        .form-row input[type="number"] { width: 100px; }
+        .preset-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.78rem;
+        }
+        .btn:hover { color: var(--gold); border-color: rgba(201, 168, 76, 0.45); }
+        .btn-primary {
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.45);
+            background: var(--gold-dim);
+        }
+        .alloc-table-wrap { overflow-x: auto; margin-top: 8px; }
+        .alloc-table {
+            width: 100%;
+            min-width: 560px;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        .alloc-table th {
+            text-align: left;
+            color: var(--text-dim);
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 8px 6px;
+            border-bottom: 1px solid var(--border);
+        }
+        .alloc-table td {
+            padding: 7px 6px;
+            border-bottom: 1px solid var(--border);
+        }
+        .alloc-table tr:last-child td { border-bottom: none; }
+        .alloc-table input.initial-input,
+        .alloc-table input.amount-input { width: 80px; }
+        .alloc-table select.freq-input {
+            width: 72px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 4px 2px;
+            border-radius: 6px;
+            font: inherit;
+            font-size: 0.72rem;
+            color-scheme: inherit;
+        }
+        .alloc-table input[type="checkbox"] { accent-color: var(--gold); }
+        .weight-sum {
+            margin-top: 8px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+        .weight-sum.warn { color: var(--bad); }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            padding: 14px 16px;
+        }
+        .stat-card h3 {
+            font-size: 0.65rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+        .stat-card .value {
+            font-family: var(--font-mono);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .stat-card .value.pos { color: var(--good); }
+        .stat-card .value.neg { color: var(--bad); }
+        .chart-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            padding: 16px 14px 10px;
+            position: relative;
+        }
+        .chart-box + .chart-box { margin-top: 18px; }
+        .chart-fs-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 2;
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 0;
+        }
+        .chart-fs-btn:hover { color: var(--gold); background: var(--gold-dim); }
+        .chart-head {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
+            padding-right: 36px;
+        }
+        .chart-head .title { font-size: 0.85rem; font-weight: 600; }
+        .chart-head .meta { font-size: 0.75rem; color: var(--text-dim); }
+        .chart-fs-dialog {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100dvh;
+            max-width: none;
+            max-height: none;
+            margin: 0;
+            border: none;
+            padding: 12px 16px 16px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .chart-fs-dialog::backdrop { background: var(--dialog-backdrop); }
+        .chart-fs-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+            min-height: 36px;
+        }
+        .chart-fs-bar .title { font-size: 0.95rem; font-weight: 600; }
+        .chart-fs-bar .meta {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+        .chart-fs-close {
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .chart-fs-close:hover { color: var(--gold); }
+        .chart-fs-body { height: calc(100dvh - 64px); position: relative; }
+        .state-msg {
+            padding: 28px 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+        }
+        .site-footer {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 8px var(--container-pad) max(32px, calc(var(--safe-bottom) + 24px));
+            display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: center;
+            border-top: 1px solid var(--border);
+            position: relative; z-index: 1;
+        }
+        .site-footer a { color: var(--text-secondary); text-decoration: none; font-size: 0.82rem; }
+        .site-footer a:hover { color: var(--gold); }
+        .jump-dialog.gate-dialog {
+            width: 100vw; max-width: none; height: 100dvh; max-height: none;
+            margin: 0; padding: 16px; border: none; border-radius: 0;
+            background: transparent; box-shadow: none; inset: 0;
+        }
+        .jump-dialog.gate-dialog[open] { display: flex; align-items: center; justify-content: center; }
+        .gate-panel {
+            width: min(420px, calc(100vw - 32px));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            background: var(--bg-card);
+            padding: 22px 22px 16px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+        }
+        html.gate-locked body > *:not(#gateDialog) { visibility: hidden; }
+        @media (max-width: 1024px) {
+            :root { --container-pad: 18px; }
+            .container { padding-top: 20px; }
+        }
+        @media (max-width: 640px) {
+            html { font-size: 14px; }
+            :root { --container-pad: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="topnav" aria-label="页面导航">
+        <div class="topnav-inner">
+            <div class="brand">
+                <span>10ETF 持仓</span>
+                <span class="brand-sep">·</span>
+                <span class="brand-sub">回测</span>
+            </div>
+            <div class="nav-links" aria-label="栏目">
+                <a href="index.html">当前持仓</a>
+                <a href="history.html">历史持仓</a>
+                <a href="kline.html">历史 K 线</a>
+                <a href="backtest.html" class="active" aria-current="page">组合回测</a>
+            </div>
+            <div class="topnav-meta">
+                <div class="topnav-chip">
+                    <span class="label">回测区间</span>
+                    <span class="val" id="nav-range">—</span>
+                </div>
+                <div class="topnav-chip">
+                    <span class="label">组合收益</span>
+                    <span class="val" id="nav-return">—</span>
+                </div>
+                <div class="num-toggle" role="group" aria-label="金额分位">
+                    <button type="button" data-group="wan">万分位</button>
+                    <button type="button" data-group="qian">千分位</button>
+                </div>
+                <button type="button" class="theme-toggle" id="themeToggle" aria-label="切换主题">
+                    <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path fill="currentColor" d="M21 14.3A8.5 8.5 0 0 1 9.7 3 9 9 0 1 0 21 14.3z"/>
+                    </svg>
+                    <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>
+                        <path d="M12 3v2M12 19v2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M3 12h2M19 12h2M5.2 18.8l1.4-1.4M17.4 6.6l1.4-1.4"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="panel">
+            <div class="panel-head">
+                <span class="accent-line" aria-hidden="true"></span>
+                <h2 class="panel-title">组合定投回测</h2>
+                <span class="panel-sub">基于 kline/ 日 K 收盘价 · 各 ETF 独立起始资金 / 定投周期 / 每期金额 · 曲线叠加显示</span>
+            </div>
+            <p id="bt-empty" class="state-msg" hidden>暂无 K 线数据，请先执行 make kline。</p>
+            <div id="bt-main" hidden>
+                <div class="layout">
+                    <aside class="card">
+                        <div class="form-row">
+                            <label>起始<input type="date" id="bt-from"></label>
+                            <label>结束<input type="date" id="bt-to"></label>
+                        </div>
+                        <div class="preset-btns">
+                            <button type="button" class="btn" data-range="1y">近一年</button>
+                            <button type="button" class="btn" data-range="3y">近三年</button>
+                            <button type="button" class="btn" data-range="all">全部</button>
+                            <button type="button" class="btn" id="btn-equal">均分定投</button>
+                            <button type="button" class="btn" id="btn-hold">当前持仓</button>
+                        </div>
+                        <div class="alloc-table-wrap">
+                            <table class="alloc-table">
+                                <thead>
+                                    <tr>
+                                        <th>参与</th>
+                                        <th>代码</th>
+                                        <th>名称</th>
+                                        <th>起始资金¥</th>
+                                        <th>定投周期</th>
+                                        <th>每期¥</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="alloc-body"></tbody>
+                            </table>
+                        </div>
+                        <p class="weight-sum" id="weight-sum">起始资金 — · 每期定投合计 —</p>
+                        <div class="preset-btns" style="margin-top:12px;">
+                            <button type="button" class="btn btn-primary" id="btn-run">运行回测</button>
+                        </div>
+                    </aside>
+                    <div>
+                        <div class="metrics-grid" id="metrics-grid">
+                            <div class="stat-card"><h3>累计投入</h3><div class="value mono" id="m-invested">—</div></div>
+                            <div class="stat-card"><h3>期末市值</h3><div class="value mono" id="m-value">—</div></div>
+                            <div class="stat-card"><h3>总收益率</h3><div class="value mono" id="m-return">—</div></div>
+                            <div class="stat-card"><h3>年化收益率</h3><div class="value mono" id="m-annual">—</div></div>
+                            <div class="stat-card"><h3>最大回撤</h3><div class="value mono" id="m-dd">—</div></div>
+                            <div class="stat-card"><h3>定投期数</h3><div class="value mono" id="m-periods">—</div></div>
+                        </div>
+                        <div class="chart-box">
+                            <button type="button" class="chart-fs-btn" data-chart="bt-chart" aria-label="全屏查看资金曲线" title="全屏查看">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                                </svg>
+                            </button>
+                            <div class="chart-head">
+                                <span class="title">叠加回测资金曲线</span>
+                                <span class="meta">组合市值 · 累计投入 · 各 ETF 持仓市值（点击图例切换）</span>
+                            </div>
+                            <canvas id="bt-chart"></canvas>
+                        </div>
+                        <div class="chart-box">
+                            <button type="button" class="chart-fs-btn" data-chart="bt-chart-return" aria-label="全屏查看收益率曲线" title="全屏查看">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                                </svg>
+                            </button>
+                            <div class="chart-head">
+                                <span class="title">叠加回测收益率曲线</span>
+                                <span class="meta">组合与各 ETF 累计收益率 %（点击图例切换）</span>
+                            </div>
+                            <canvas id="bt-chart-return"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="site-footer">
+        <a href="https://space.bilibili.com/278413353" target="_blank" rel="noopener noreferrer">Bilibili</a>
+        <a href="https://github.com/zangdale" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </footer>
+    <dialog id="chartFsDialog" class="chart-fs-dialog" aria-labelledby="chartFsTitle">
+        <div class="chart-fs-bar">
+            <span class="title" id="chartFsTitle">叠加回测曲线</span>
+            <span class="meta" id="chartFsMeta"></span>
+            <button type="button" class="chart-fs-close" id="chartFsClose" aria-label="退出全屏" title="退出全屏">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 15H4v5"/><path d="M15 9h5V4"/><path d="M4 20l6-6"/><path d="M20 4l-6 6"/>
+                </svg>
+            </button>
+        </div>
+        <div class="chart-fs-body">
+            <canvas id="bt-chart-fs"></canvas>
+        </div>
+    </dialog>
+    <dialog id="gateDialog" class="jump-dialog gate-dialog" aria-labelledby="gateDialogTitle">
+        <div class="gate-panel">
+            <h3 id="gateDialogTitle">作者「慢就是快」提醒您</h3>
+            <p class="jump-sub" style="margin:0 0 16px;font-size:0.78rem;color:var(--text-secondary);">请阅读并确认后再查看持仓</p>
+            <div style="display:flex;gap:10px;">
+                <button type="button" class="btn" id="gateReject" style="flex:1;">关闭</button>
+                <button type="button" class="btn btn-primary" id="gateConfirm" style="flex:1;">确认</button>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        const NAME_OVERRIDE = { '515180': '中证红利' };
+        const LINE_COLORS = [
+            'rgba(201, 168, 76, 0.95)',
+            'rgba(59, 138, 138, 0.95)',
+            'rgba(138, 180, 200, 0.95)',
+            'rgba(227, 193, 99, 0.9)',
+            'rgba(148, 120, 200, 0.9)',
+            'rgba(76, 175, 80, 0.85)',
+            'rgba(244, 67, 54, 0.75)',
+            'rgba(255, 152, 0, 0.85)',
+            'rgba(33, 150, 243, 0.85)',
+            'rgba(156, 39, 176, 0.8)'
+        ];
+        const THEME_KEY = '10etf-theme';
+        const NUM_GROUP_KEY = '10etf-num-group';
+        let numGroup = localStorage.getItem(NUM_GROUP_KEY) === 'qian' ? 'qian' : 'wan';
+        const BT_KEY = '10etf-backtest';
+        const FREQ_OPTIONS = [
+            { value: 'day', label: '每天' },
+            { value: 'week', label: '每周' },
+            { value: 'biweek', label: '双周' },
+            { value: 'month', label: '每月' },
+        ];
+        const DEFAULT_DCA_TOTAL = 10000;
+
+        function freqSelectHtml(selected = 'month') {
+            return `<select class="freq-input" aria-label="定投周期">${FREQ_OPTIONS.map((o) =>
+                `<option value="${o.value}"${o.value === selected ? ' selected' : ''}>${o.label}</option>`
+            ).join('')}</select>`;
+        }
+
+        let infoItems = [];
+        let infoByCode = {};
+        let chart = null;
+        let returnChart = null;
+        let fsChart = null;
+        let fsSourceId = '';
+        let lastFundPayload = null;
+        let lastReturnPayload = null;
+        let lastInvested = NaN;
+        let lastFinalValue = NaN;
+        let lastTotalReturn = NaN;
+        let klineCache = {};
+
+        function ymd(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+        function displayName(code) {
+            return NAME_OVERRIDE[code] || (infoByCode[code] && infoByCode[code].name) || code;
+        }
+        function escapeHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function cssVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+        function applyChartDefaults() {
+            if (typeof Chart === 'undefined') return;
+            Chart.defaults.color = cssVar('--chart-muted');
+            Chart.defaults.borderColor = cssVar('--border');
+            Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
+        }
+        function applyTheme(theme, { persist = true } = {}) {
+            const t = theme === 'light' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.style.colorScheme = t;
+            if (persist) localStorage.setItem(THEME_KEY, t);
+        }
+        function bindThemeToggle() {
+            applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark', { persist: false });
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+                applyTheme(next);
+                applyChartDefaults();
+                if (lastFundPayload) renderChart('bt-chart', 'money', false);
+                if (lastReturnPayload) renderChart('bt-chart-return', 'percent', false);
+                redrawFsChart();
+            });
+        }
+
+        function chartOptions(kind, fullscreen) {
+            const isPercent = kind === 'percent';
+            return {
+                responsive: true,
+                maintainAspectRatio: !fullscreen,
+                aspectRatio: fullscreen ? undefined : (window.innerWidth <= 640 ? 1.2 : 2.2),
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: cssVar('--chart-muted'),
+                            boxWidth: 12,
+                            font: { size: fullscreen ? 11 : 10 },
+                        },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const v = ctx.parsed.y;
+                                if (isPercent) {
+                                    return `${ctx.dataset.label}: ${Number.isFinite(v) ? pct(v) : '—'}`;
+                                }
+                                return `${ctx.dataset.label}: ${money(v)}`;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: cssVar('--chart-muted'),
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: fullscreen ? 18 : 12,
+                            font: { size: fullscreen ? 12 : 10 },
+                        },
+                        grid: { color: cssVar('--chart-grid') },
+                    },
+                    y: {
+                        ticks: {
+                            color: cssVar('--chart-muted'),
+                            font: { size: fullscreen ? 12 : 10 },
+                            callback: isPercent
+                                ? (v) => `${Number(v).toFixed(1)}%`
+                                : (v) => Number(v).toLocaleString('zh-CN'),
+                        },
+                        grid: { color: cssVar('--chart-grid') },
+                    },
+                },
+            };
+        }
+
+        function calcReturnSeries(values, investedArr) {
+            return values.map((v, i) => {
+                const inv = investedArr[i];
+                return inv > 0 && Number.isFinite(v) ? ((v - inv) / inv) * 100 : null;
+            });
+        }
+
+        function chartKind(canvasId) {
+            return canvasId === 'bt-chart-return' ? 'percent' : 'money';
+        }
+
+        function payloadFor(canvasId) {
+            return canvasId === 'bt-chart-return' ? lastReturnPayload : lastFundPayload;
+        }
+
+        function renderChart(canvasId, kind, fullscreen) {
+            const sourceId = canvasId === 'bt-chart-fs' ? fsSourceId : canvasId;
+            const payload = payloadFor(sourceId);
+            if (!payload) return null;
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return null;
+            if (canvasId === 'bt-chart' && chart) chart.destroy();
+            if (canvasId === 'bt-chart-return' && returnChart) returnChart.destroy();
+            if (canvasId === 'bt-chart-fs' && fsChart) fsChart.destroy();
+            const instance = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: payload.labels,
+                    datasets: payload.datasets,
+                },
+                options: chartOptions(kind, fullscreen),
+            });
+            if (canvasId === 'bt-chart') chart = instance;
+            else if (canvasId === 'bt-chart-return') returnChart = instance;
+            else fsChart = instance;
+            return instance;
+        }
+
+        function redrawFsChart() {
+            const dlg = document.getElementById('chartFsDialog');
+            if (!dlg || !dlg.open || !fsSourceId) return;
+            renderChart('bt-chart-fs', chartKind(fsSourceId), true);
+        }
+
+        function openChartFs(canvasId) {
+            const payload = payloadFor(canvasId);
+            if (!payload) return;
+            fsSourceId = canvasId;
+            const box = document.querySelector(`.chart-fs-btn[data-chart="${canvasId}"]`)?.closest('.chart-box');
+            const titleEl = box?.querySelector('.chart-head .title');
+            document.getElementById('chartFsTitle').textContent = titleEl?.textContent.trim() || '全屏查看';
+            const ret = document.getElementById('m-return').textContent;
+            const val = document.getElementById('m-value').textContent;
+            document.getElementById('chartFsMeta').textContent = `${ret} · ${val}`;
+            const dlg = document.getElementById('chartFsDialog');
+            dlg.showModal();
+            window.requestAnimationFrame(() => renderChart('bt-chart-fs', chartKind(canvasId), true));
+        }
+
+        function bindChartFs() {
+            const dlg = document.getElementById('chartFsDialog');
+            document.querySelectorAll('.chart-fs-btn[data-chart]').forEach((btn) => {
+                btn.addEventListener('click', () => openChartFs(btn.dataset.chart || ''));
+            });
+            document.getElementById('chartFsClose').addEventListener('click', () => dlg.close());
+            dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+            dlg.addEventListener('close', () => {
+                if (fsChart) {
+                    fsChart.destroy();
+                    fsChart = null;
+                }
+                fsSourceId = '';
+            });
+        }
+        function bindGate() {
+            const GATE_KEY = '10etf-gate-ok';
+            const dlg = document.getElementById('gateDialog');
+            if (!dlg || dlg.dataset.bound === '1') return;
+            const okAt = Number(localStorage.getItem(GATE_KEY));
+            if (Number.isFinite(okAt) && (Date.now() - okAt) < 86400000) {
+                document.documentElement.classList.remove('gate-locked');
+                dlg.dataset.bound = '1';
+                return;
+            }
+            dlg.dataset.bound = '1';
+            document.documentElement.classList.add('gate-locked');
+            let confirmed = false;
+            const exitPage = () => { if (!confirmed) window.location.href = '/closed.html'; };
+            dlg.addEventListener('cancel', (e) => { e.preventDefault(); exitPage(); });
+            document.getElementById('gateConfirm').addEventListener('click', () => {
+                confirmed = true;
+                localStorage.setItem(GATE_KEY, String(Date.now()));
+                document.documentElement.classList.remove('gate-locked');
+                dlg.close();
+            });
+            document.getElementById('gateReject').addEventListener('click', exitPage);
+            try { dlg.showModal(); } catch { dlg.setAttribute('open', ''); }
+        }
+        bindGate();
+
+        function formatGrouped(n, fracDigits) {
+            if (!Number.isFinite(n)) return '—';
+            const size = numGroup === 'qian' ? 3 : 4;
+            const neg = n < 0;
+            const abs = Math.abs(n);
+            const s = fracDigits > 0 ? abs.toFixed(fracDigits) : String(Math.round(abs));
+            const parts = [];
+            let intPart = s.includes('.') ? s.split('.')[0] : s;
+            const frac = s.includes('.') ? s.split('.')[1] : '';
+            while (intPart.length > size) {
+                parts.unshift(intPart.slice(-size));
+                intPart = intPart.slice(0, -size);
+            }
+            if (intPart) parts.unshift(intPart);
+            let out = parts.join(numGroup === 'qian' ? ',' : "'");
+            if (fracDigits > 0) out += '.' + frac;
+            return (neg ? '-' : '') + out;
+        }
+        function money(n) {
+            if (!Number.isFinite(n)) return '—';
+            return '¥ ' + formatGrouped(n, 2);
+        }
+        function syncNumToggle() {
+            document.querySelectorAll('.num-toggle button').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.group === numGroup);
+            });
+        }
+        function refreshMoneyDisplays() {
+            if (!Number.isFinite(lastInvested)) return;
+            document.getElementById('m-invested').textContent = money(lastInvested);
+            document.getElementById('m-value').textContent = money(lastFinalValue);
+        }
+        function bindNumToggle() {
+            syncNumToggle();
+            document.querySelectorAll('.num-toggle button').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const g = btn.dataset.group;
+                    if (g !== 'wan' && g !== 'qian') return;
+                    numGroup = g;
+                    localStorage.setItem(NUM_GROUP_KEY, numGroup);
+                    syncNumToggle();
+                    refreshMoneyDisplays();
+                });
+            });
+        }
+        function updateNavMeta(from, to, totalReturn) {
+            const rangeEl = document.getElementById('nav-range');
+            const retEl = document.getElementById('nav-return');
+            if (rangeEl) rangeEl.textContent = from && to ? `${from} ~ ${to}` : '—';
+            if (retEl) retEl.textContent = pct(totalReturn);
+        }
+        function pct(n) {
+            if (!Number.isFinite(n)) return '—';
+            return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+        }
+
+        function commonRange(codes) {
+            let start = '';
+            let end = '';
+            for (const code of codes) {
+                const info = infoByCode[code];
+                if (!info || !info.start || !info.end) continue;
+                if (!start || info.start > start) start = info.start;
+                if (!end || info.end < end) end = info.end;
+            }
+            return { start, end };
+        }
+        function fullRange(codes) {
+            let start = '';
+            let end = '';
+            for (const code of codes) {
+                const info = infoByCode[code];
+                if (!info || !info.start || !info.end) continue;
+                if (!start || info.start < start) start = info.start;
+                if (!end || info.end > end) end = info.end;
+            }
+            return { start, end };
+        }
+
+        function yearsForRange(from, to, years) {
+            const sy = from ? Number(from.slice(0, 4)) : Math.min(...years);
+            const ey = to ? Number(to.slice(0, 4)) : Math.max(...years);
+            return years.filter((y) => y >= sy && y <= ey);
+        }
+
+        async function loadKline(code, from, to) {
+            const cacheKey = `${code}|${from}|${to}`;
+            if (klineCache[cacheKey]) return klineCache[cacheKey];
+            const info = infoByCode[code];
+            if (!info || !info.years) return new Map();
+            const years = yearsForRange(from, to, info.years);
+            const chunks = await Promise.all(years.map(async (year) => {
+                try {
+                    const r = await fetch(`kline/${year}/${code}.json`, { cache: 'no-store' });
+                    if (!r.ok) return [];
+                    const data = await r.json();
+                    return Array.isArray(data.items) ? data.items : [];
+                } catch { return []; }
+            }));
+            const map = new Map();
+            for (const bar of chunks.flat()) {
+                if (!bar || !bar.date) continue;
+                if (from && bar.date < from) continue;
+                if (to && bar.date > to) continue;
+                map.set(bar.date, Number(bar.close));
+            }
+            klineCache[cacheKey] = map;
+            return map;
+        }
+
+        function buildTradingDays(priceMaps) {
+            const set = new Set();
+            for (const map of Object.values(priceMaps)) {
+                for (const d of map.keys()) set.add(d);
+            }
+            return [...set].sort();
+        }
+
+        function nextTradingOnOrAfter(target, tradingDays) {
+            for (const d of tradingDays) {
+                if (d >= target) return d;
+            }
+            return null;
+        }
+
+        function dcaDates(from, to, freq, tradingDays) {
+            if (freq === 'day') {
+                return tradingDays.filter((d) => d >= from && d <= to);
+            }
+            const out = [];
+            let cur = new Date(from + 'T00:00:00');
+            const end = new Date(to + 'T00:00:00');
+            while (cur <= end) {
+                const day = ymd(cur);
+                const exec = nextTradingOnOrAfter(day, tradingDays);
+                if (exec && exec <= to) out.push(exec);
+                if (freq === 'week') cur.setDate(cur.getDate() + 7);
+                else if (freq === 'biweek') cur.setDate(cur.getDate() + 14);
+                else cur.setMonth(cur.getMonth() + 1);
+            }
+            return [...new Set(out)].sort();
+        }
+
+        function getAllocState() {
+            const rows = [...document.querySelectorAll('#alloc-body tr')];
+            return rows.map((tr) => ({
+                code: tr.dataset.code,
+                enabled: tr.querySelector('input[type="checkbox"]').checked,
+                initial: Number(tr.querySelector('.initial-input').value) || 0,
+                freq: tr.querySelector('.freq-input').value || 'month',
+                amount: Number(tr.querySelector('.amount-input').value) || 0,
+            }));
+        }
+
+        function activeCodes(allocState) {
+            const codes = new Set();
+            for (const e of allocState) {
+                if (!e.enabled) continue;
+                if (e.initial > 0 || e.amount > 0) codes.add(e.code);
+            }
+            return [...codes];
+        }
+
+        function updateAllocSummary() {
+            const entries = getAllocState().filter((e) => e.enabled);
+            const initialSum = entries.reduce((s, e) => s + Math.max(0, e.initial), 0);
+            const dcaSum = entries.reduce((s, e) => s + Math.max(0, e.amount), 0);
+            document.getElementById('weight-sum').textContent =
+                `起始资金 ${money(initialSum)} · 每期定投合计 ${money(dcaSum)}`;
+        }
+
+        function buildAllocTable() {
+            const body = document.getElementById('alloc-body');
+            body.innerHTML = infoItems.map((row) => {
+                const code = row.code;
+                const label = displayName(code);
+                return `
+                <tr data-code="${escapeHtml(code)}">
+                    <td><input type="checkbox" checked aria-label="参与 ${escapeHtml(code)}"></td>
+                    <td class="mono">${escapeHtml(code)}</td>
+                    <td>${escapeHtml(label)}</td>
+                    <td><input type="number" class="initial-input" min="0" step="100" value="0"></td>
+                    <td>${freqSelectHtml('month')}</td>
+                    <td><input type="number" class="amount-input" min="0" step="100" value="1000"></td>
+                </tr>`;
+            }).join('');
+            body.addEventListener('input', updateAllocSummary);
+            body.addEventListener('change', updateAllocSummary);
+            updateAllocSummary();
+        }
+
+        function setEqualAmount() {
+            const enabled = [...document.querySelectorAll('#alloc-body tr')].filter(
+                (tr) => tr.querySelector('input[type="checkbox"]').checked
+            );
+            const each = enabled.length ? Math.round(DEFAULT_DCA_TOTAL / enabled.length) : 0;
+            enabled.forEach((tr) => {
+                tr.querySelector('.amount-input').value = String(each);
+            });
+            updateAllocSummary();
+        }
+
+        async function setHoldPreset() {
+            let payload = null;
+            try {
+                const r = await fetch('etf_hold.json', { cache: 'no-store' });
+                if (r.ok) payload = await r.json();
+            } catch { /* ignore */ }
+            const items = payload && Array.isArray(payload.items) ? payload.items : [];
+            const mvByCode = Object.fromEntries(
+                items.map((it) => [String(it.code), Number(it.market_value) || (Number(it.amount) * Number(it.price)) || 0])
+            );
+            const sum = Object.values(mvByCode).reduce((s, v) => s + v, 0);
+            document.querySelectorAll('#alloc-body tr').forEach((tr) => {
+                const code = tr.dataset.code;
+                const cb = tr.querySelector('input[type="checkbox"]');
+                const initialInput = tr.querySelector('.initial-input');
+                const amountInput = tr.querySelector('.amount-input');
+                const mv = mvByCode[code] || 0;
+                if (mv > 0 && sum > 0) {
+                    cb.checked = true;
+                    initialInput.value = Math.round(mv);
+                    amountInput.value = String(Math.round(DEFAULT_DCA_TOTAL * (mv / sum)));
+                } else {
+                    cb.checked = false;
+                    initialInput.value = '0';
+                    amountInput.value = '0';
+                }
+            });
+            updateAllocSummary();
+        }
+
+        function savePrefs() {
+            const prefs = {
+                from: document.getElementById('bt-from').value,
+                to: document.getElementById('bt-to').value,
+                alloc: getAllocState(),
+            };
+            localStorage.setItem(BT_KEY, JSON.stringify(prefs));
+        }
+
+        function loadPrefs() {
+            try {
+                const raw = localStorage.getItem(BT_KEY);
+                if (!raw) return;
+                const prefs = JSON.parse(raw);
+                if (prefs.from) document.getElementById('bt-from').value = prefs.from;
+                if (prefs.to) document.getElementById('bt-to').value = prefs.to;
+                if (Array.isArray(prefs.alloc)) {
+                    for (const row of prefs.alloc) {
+                        const tr = document.querySelector(`#alloc-body tr[data-code="${row.code}"]`);
+                        if (!tr) continue;
+                        tr.querySelector('input[type="checkbox"]').checked = !!row.enabled;
+                        if (Number.isFinite(row.initial)) {
+                            tr.querySelector('.initial-input').value = row.initial;
+                        }
+                        if (row.freq) tr.querySelector('.freq-input').value = row.freq;
+                        if (Number.isFinite(row.amount)) {
+                            tr.querySelector('.amount-input').value = row.amount;
+                        } else if (Number.isFinite(prefs.amount)) {
+                            tr.querySelector('.amount-input').value = prefs.amount;
+                        }
+                        if (row.freq == null && prefs.freq) {
+                            tr.querySelector('.freq-input').value = prefs.freq;
+                        }
+                    }
+                } else if (prefs.freq || Number.isFinite(prefs.amount)) {
+                    document.querySelectorAll('#alloc-body tr').forEach((tr) => {
+                        if (prefs.freq) tr.querySelector('.freq-input').value = prefs.freq;
+                        if (Number.isFinite(prefs.amount)) {
+                            tr.querySelector('.amount-input').value = prefs.amount;
+                        }
+                    });
+                }
+                updateAllocSummary();
+            } catch { /* ignore */ }
+        }
+
+        function setRangePreset(key) {
+            const codes = infoItems.map((r) => r.code);
+            const full = fullRange(codes);
+            if (!full.start || !full.end) return;
+            const end = full.end;
+            let from = full.start;
+            if (key === '1y') {
+                const d = new Date(end + 'T00:00:00');
+                d.setFullYear(d.getFullYear() - 1);
+                from = ymd(d);
+                if (from < full.start) from = full.start;
+            } else if (key === '3y') {
+                const d = new Date(end + 'T00:00:00');
+                d.setFullYear(d.getFullYear() - 3);
+                from = ymd(d);
+                if (from < full.start) from = full.start;
+            }
+            document.getElementById('bt-from').value = from;
+            document.getElementById('bt-to').value = end;
+        }
+
+        function maxDrawdown(values) {
+            let peak = -Infinity;
+            let maxDd = 0;
+            for (const v of values) {
+                if (!Number.isFinite(v)) continue;
+                if (v > peak) peak = v;
+                if (peak > 0) {
+                    const dd = (peak - v) / peak;
+                    if (dd > maxDd) maxDd = dd;
+                }
+            }
+            return maxDd * 100;
+        }
+
+        function annualizedReturn(totalReturnPct, days) {
+            if (!Number.isFinite(totalReturnPct) || days <= 0) return NaN;
+            const r = totalReturnPct / 100;
+            return (Math.pow(1 + r, 365 / days) - 1) * 100;
+        }
+
+        async function runBacktest() {
+            const from = document.getElementById('bt-from').value;
+            const to = document.getElementById('bt-to').value;
+            if (!from || !to || from > to) {
+                alert('请选择有效的回测区间');
+                return;
+            }
+            const allocState = getAllocState().filter((e) => e.enabled);
+            const codes = activeCodes(allocState);
+            const initialByCode = Object.fromEntries(
+                allocState.filter((e) => e.initial > 0).map((e) => [e.code, e.initial])
+            );
+            const dcaByCode = Object.fromEntries(
+                allocState.filter((e) => e.amount > 0).map((e) => [e.code, { freq: e.freq, amount: e.amount }])
+            );
+            if (!codes.length) {
+                alert('请至少选择一只 ETF，并设置起始资金或每期定投金额');
+                return;
+            }
+            if (!Object.keys(dcaByCode).length && !Object.keys(initialByCode).length) {
+                alert('请至少为一只 ETF 设置起始资金或每期定投金额');
+                return;
+            }
+
+            savePrefs();
+            klineCache = {};
+
+            const priceMaps = {};
+            await Promise.all(codes.map(async (code) => {
+                priceMaps[code] = await loadKline(code, from, to);
+            }));
+
+            const tradingDays = buildTradingDays(priceMaps).filter((d) => d >= from && d <= to);
+            if (!tradingDays.length) {
+                alert('所选区间无可用 K 线数据');
+                return;
+            }
+
+            const investDaysByCode = {};
+            for (const code of codes) {
+                const cfg = dcaByCode[code];
+                if (!cfg) continue;
+                const etfDays = tradingDays.filter((d) => priceMaps[code].get(d) > 0);
+                investDaysByCode[code] = new Set(dcaDates(from, to, cfg.freq, etfDays));
+            }
+            const shares = Object.fromEntries(codes.map((c) => [c, 0]));
+            const lastClose = Object.fromEntries(codes.map((c) => [c, null]));
+            const etfInvested = Object.fromEntries(codes.map((c) => [c, 0]));
+            const initialPending = { ...initialByCode };
+
+            const dates = [];
+            const portfolioValues = [];
+            const investedSeries = [];
+            const etfValues = Object.fromEntries(codes.map((c) => [c, []]));
+            const etfInvestedSeries = Object.fromEntries(codes.map((c) => [c, []]));
+            let invested = 0;
+            let periods = 0;
+
+            for (const day of tradingDays) {
+                for (const code of codes) {
+                    const pending = initialPending[code];
+                    if (!(pending > 0)) continue;
+                    const price = priceMaps[code].get(day);
+                    if (!(price > 0)) continue;
+                    shares[code] += pending / price;
+                    invested += pending;
+                    etfInvested[code] += pending;
+                    initialPending[code] = 0;
+                }
+
+                for (const code of codes) {
+                    const cfg = dcaByCode[code];
+                    if (!cfg || !investDaysByCode[code]?.has(day)) continue;
+                    const price = priceMaps[code].get(day);
+                    if (!(price > 0) || !(cfg.amount > 0)) continue;
+                    shares[code] += cfg.amount / price;
+                    invested += cfg.amount;
+                    etfInvested[code] += cfg.amount;
+                    periods += 1;
+                }
+
+                let total = 0;
+                for (const code of codes) {
+                    const p = priceMaps[code].get(day);
+                    if (p > 0) lastClose[code] = p;
+                    const val = shares[code] * (lastClose[code] || 0);
+                    etfValues[code].push(val);
+                    etfInvestedSeries[code].push(etfInvested[code]);
+                    total += val;
+                }
+                dates.push(day);
+                portfolioValues.push(total);
+                investedSeries.push(invested);
+            }
+
+            const portfolioReturn = calcReturnSeries(portfolioValues, investedSeries);
+
+            const finalValue = portfolioValues[portfolioValues.length - 1] || 0;
+            const totalReturn = invested > 0 ? ((finalValue - invested) / invested) * 100 : NaN;
+            const daySpan = Math.max(1, (new Date(to) - new Date(from)) / 86400000);
+            const annual = annualizedReturn(totalReturn, daySpan);
+            const mdd = maxDrawdown(portfolioValues);
+
+            lastInvested = invested;
+            lastFinalValue = finalValue;
+            lastTotalReturn = totalReturn;
+            document.getElementById('m-invested').textContent = money(invested);
+            document.getElementById('m-value').textContent = money(finalValue);
+            updateNavMeta(from, to, totalReturn);
+            const retEl = document.getElementById('m-return');
+            retEl.textContent = pct(totalReturn);
+            retEl.className = 'value mono ' + (totalReturn >= 0 ? 'pos' : 'neg');
+            const annEl = document.getElementById('m-annual');
+            annEl.textContent = pct(annual);
+            annEl.className = 'value mono ' + (annual >= 0 ? 'pos' : 'neg');
+            document.getElementById('m-dd').textContent = pct(-mdd);
+            document.getElementById('m-periods').textContent = String(periods);
+
+            const fundDatasets = [
+                {
+                    label: '组合市值',
+                    data: portfolioValues,
+                    borderColor: 'rgba(201, 168, 76, 0.95)',
+                    backgroundColor: 'rgba(201, 168, 76, 0.08)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 2.5,
+                },
+                {
+                    label: '累计投入',
+                    data: investedSeries,
+                    borderColor: 'rgba(59, 138, 138, 0.85)',
+                    borderDash: [6, 4],
+                    fill: false,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+            ];
+            const returnDatasets = [
+                {
+                    label: '组合收益率',
+                    data: portfolioReturn,
+                    borderColor: 'rgba(255, 152, 0, 0.95)',
+                    fill: false,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 2.5,
+                },
+            ];
+            codes.forEach((code, i) => {
+                const color = LINE_COLORS[(i + 2) % LINE_COLORS.length];
+                fundDatasets.push({
+                    label: `${displayName(code)}[${code}]`,
+                    data: etfValues[code],
+                    borderColor: color,
+                    fill: false,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 1.5,
+                });
+                returnDatasets.push({
+                    label: `${displayName(code)}[${code}]`,
+                    data: calcReturnSeries(etfValues[code], etfInvestedSeries[code]),
+                    borderColor: color,
+                    fill: false,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 1.5,
+                });
+            });
+
+            lastFundPayload = { labels: dates, datasets: fundDatasets };
+            lastReturnPayload = { labels: dates, datasets: returnDatasets };
+            renderChart('bt-chart', 'money', false);
+            renderChart('bt-chart-return', 'percent', false);
+            redrawFsChart();
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            applyChartDefaults();
+            bindNumToggle();
+            bindThemeToggle();
+            bindChartFs();
+
+            let info = null;
+            try {
+                const r = await fetch('kline/info.json', { cache: 'no-store' });
+                if (r.ok) info = await r.json();
+            } catch { /* ignore */ }
+
+            if (!info || !Array.isArray(info.items) || !info.items.length) {
+                document.getElementById('bt-empty').hidden = false;
+                return;
+            }
+
+            infoItems = info.items.filter((row) => row && row.code && row.rows > 0);
+            infoByCode = Object.fromEntries(infoItems.map((row) => [row.code, row]));
+            if (!infoItems.length) {
+                document.getElementById('bt-empty').hidden = false;
+                return;
+            }
+
+            document.getElementById('bt-main').hidden = false;
+            buildAllocTable();
+
+            loadPrefs();
+            if (!document.getElementById('bt-from').value || !document.getElementById('bt-to').value) {
+                setRangePreset('1y');
+            }
+
+            document.getElementById('btn-equal').addEventListener('click', setEqualAmount);
+            document.getElementById('btn-hold').addEventListener('click', setHoldPreset);
+            document.getElementById('btn-run').addEventListener('click', runBacktest);
+            document.querySelectorAll('[data-range]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    setRangePreset(btn.dataset.range);
+                    await runBacktest();
+                });
+            });
+
+            await runBacktest();
+        });
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # 10ETF
 
-单页持仓展示：`index.html` 读取根目录 **`etf_hold.json`**。历史折线见 **`history.html`**（`etf_hold/*.json`）。历史日 K 见 **`kline.html`**（`kline/yyyy/code.json`）。
+单页持仓展示：`index.html` 读取根目录 **`etf_hold.json`**。历史折线见 **`history.html`**（`etf_hold/*.json`）。历史日 K 见 **`kline.html`**（`kline/yyyy/code.json`）。组合定投回测见 **`backtest.html`**。
 
 ## 拉取持仓
 
