@@ -77,24 +77,23 @@ def load_codes() -> list[str]:
 
 
 def load_names() -> dict[str, str]:
-    names = dict(NAME_OVERRIDES)
+    names: dict[str, str] = {}
     hold_path = ROOT / "etf_hold.json"
-    if not hold_path.is_file():
-        return names
-    try:
-        data = json.loads(hold_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return names
-    items = data.get("items") if isinstance(data, dict) else None
-    if not isinstance(items, list):
-        return names
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        code = str(item.get("code") or "").strip()
-        name = str(item.get("name") or "").strip()
-        if code and name and code not in names:
-            names[code] = name
+    if hold_path.is_file():
+        try:
+            data = json.loads(hold_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            data = None
+        items = data.get("items") if isinstance(data, dict) else None
+        if isinstance(items, list):
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                code = str(item.get("code") or "").strip()
+                name = str(item.get("name") or "").strip()
+                if code and name:
+                    names[code] = name
+    names.update(NAME_OVERRIDES)
     return names
 
 

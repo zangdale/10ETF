@@ -317,7 +317,7 @@
         }
         .info-table {
             width: 100%;
-            min-width: 640px;
+            min-width: 520px;
             border-collapse: collapse;
             font-size: 0.82rem;
         }
@@ -332,12 +332,65 @@
             text-align: left;
             border-bottom: 1px solid var(--border);
         }
+        .info-table th.num,
+        .info-table td.num { text-align: right; }
         .info-table td {
             padding: 10px 12px;
             border-bottom: 1px solid var(--border);
             color: var(--text-primary);
         }
         .info-table tbody tr:last-child td { border-bottom: none; }
+        .info-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .wk52 {
+            min-width: 280px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 4px;
+        }
+        .wk52-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+        .wk52-track {
+            position: relative;
+            flex: 1;
+            min-width: 72px;
+            height: 8px;
+            border-radius: 99px;
+            background: var(--border);
+        }
+        .wk52-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, rgba(244, 67, 54, 0.45), var(--gold));
+        }
+        .wk52-mark {
+            position: absolute;
+            top: 50%;
+            width: 11px;
+            height: 11px;
+            margin-left: -5.5px;
+            margin-top: -5.5px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 0 1px var(--gold-dim);
+        }
+        .wk52-now {
+            color: var(--gold);
+            font-weight: 600;
+            white-space: nowrap;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            text-align: center;
+            line-height: 1.2;
+        }
         .hist-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -506,7 +559,7 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 class="panel-title">历史日 K</h2>
-                <span class="panel-sub">收盘价折线 · 数据来自 Tiingo </span>
+                <span class="panel-sub">收盘价折线 · 表格为最新价在 52 周高低点中的位置 · 数据来自 Tiingo</span>
             </div>
             <div class="range-bar">
                 <button type="button" class="range-btn" data-range="all">全部</button>
@@ -525,9 +578,7 @@
                         <tr>
                             <th>代码</th>
                             <th>名称</th>
-                            <th>起始</th>
-                            <th>结束</th>
-                            <th>条数</th>
+                            <th>52周范围</th>
                         </tr>
                     </thead>
                     <tbody id="info-body"></tbody>
@@ -601,6 +652,7 @@
         let infoItems = [];
         let infoByCode = {};
         let barsByCode = {};
+        let week52ByCode = {};
         let activeRange = 'year';
         let loading = false;
         const charts = {};
@@ -782,6 +834,7 @@
                     numGroup = g;
                     localStorage.setItem(NUM_GROUP_KEY, numGroup);
                     syncNumToggle();
+                    renderInfoTable();
                     drawCharts();
                 });
             });
@@ -956,18 +1009,81 @@
             }).join('');
         }
 
+        function addDaysYmd(s, days) {
+            const d = new Date(`${s}T00:00:00`);
+            if (Number.isNaN(d.getTime())) return '';
+            d.setDate(d.getDate() + days);
+            return ymd(d);
+        }
+
+        function week52Stats(bars) {
+            if (!Array.isArray(bars) || !bars.length) return null;
+            const last = bars[bars.length - 1];
+            const end = String(last.date || '');
+            const from = addDaysYmd(end, -365);
+            const window = from ? bars.filter((b) => !from || String(b.date) >= from) : bars;
+            const used = window.length ? window : bars;
+            let lo = Infinity;
+            let hi = -Infinity;
+            for (const b of used) {
+                const low = Number(b.low);
+                const high = Number(b.high);
+                const close = Number(b.close);
+                if (Number.isFinite(low)) lo = Math.min(lo, low);
+                if (Number.isFinite(high)) hi = Math.max(hi, high);
+                if (!Number.isFinite(low) && Number.isFinite(close)) lo = Math.min(lo, close);
+                if (!Number.isFinite(high) && Number.isFinite(close)) hi = Math.max(hi, close);
+            }
+            const close = Number(last.close);
+            if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return null;
+            const span = hi - lo;
+            const pos = span > 0 && Number.isFinite(close) ? (close - lo) / span : (Number.isFinite(close) ? 1 : NaN);
+            return { close, lo, hi, pos, from: used[0] && used[0].date, to: end, bars: used.length };
+        }
+
+        function week52Cell(stats) {
+            if (!stats || !Number.isFinite(stats.pos)) {
+                return '<div class="wk52"><span class="wk52-meta">—</span></div>';
+            }
+            const pct = Math.max(0, Math.min(100, stats.pos * 100));
+            const pctText = pct.toFixed(1) + '%';
+            const title = `最新 ${priceFmt(stats.close)}（${pctText}） · 低 ${priceFmt(stats.lo)} · 高 ${priceFmt(stats.hi)}`;
+            return `
+                <div class="wk52" title="${escapeHtml(title)}">
+                    <div class="wk52-meta">
+                        <span>${priceFmt(stats.lo)}</span>
+                        <div class="wk52-track">
+                            <div class="wk52-fill" style="width:${pct.toFixed(1)}%"></div>
+                            <span class="wk52-mark" style="left:${pct.toFixed(1)}%"></span>
+                        </div>
+                        <span>${priceFmt(stats.hi)}</span>
+                    </div>
+                    <span class="wk52-now">${priceFmt(stats.close)} (${pctText})</span>
+                </div>`;
+        }
+
         function renderInfoTable() {
             const body = document.getElementById('info-body');
-            body.innerHTML = infoItems.map((row) => `
+            body.innerHTML = infoItems.map((row) => {
+                const stats = week52ByCode[row.code];
+                return `
                 <tr>
                     <td class="mono">${escapeHtml(row.code)}</td>
                     <td>${escapeHtml(displayName(row.code))}</td>
-                    <td class="mono">${escapeHtml(row.start || '—')}</td>
-                    <td class="mono">${escapeHtml(row.end || '—')}</td>
-                    <td class="mono">${Number.isFinite(row.rows) ? formatGrouped(row.rows, 0) : '—'}</td>
-                </tr>
-            `).join('');
+                    <td>${week52Cell(stats)}</td>
+                </tr>`;
+            }).join('');
             document.getElementById('info-wrap').hidden = !infoItems.length;
+        }
+
+        async function loadWeek52Table() {
+            await Promise.all(infoItems.map(async (row) => {
+                const end = row.end || ymd(new Date());
+                const from = addDaysYmd(end, -365) || '';
+                const bars = await loadBarsForCode(row.code, from, end);
+                week52ByCode[row.code] = week52Stats(bars);
+            }));
+            renderInfoTable();
         }
 
         async function drawCharts() {
@@ -1046,6 +1162,7 @@
             buildGrid();
             loading = false;
             setRange('year');
+            loadWeek52Table();
         });
     </script>
 </body>
