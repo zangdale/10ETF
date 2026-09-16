@@ -392,6 +392,8 @@
             font-family: var(--font-mono);
             font-size: 0.75rem;
             color: var(--text-secondary);
+            text-align: right;
+            max-width: 62%;
         }
         .chart-fs-dialog {
             position: fixed;
@@ -515,7 +517,7 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 class="panel-title">历史持仓</h2>
-                <span class="panel-sub">账户曲线在上，下方为各 ETF 持仓数量 · 数据来自 etf_hold/yyyy-mm-dd.json</span>
+                <span class="panel-sub">账户曲线在上，下方为各 ETF 持仓数量、成本与市值 · 数据来自 etf_hold/yyyy-mm-dd.json</span>
             </div>
             <div class="range-bar">
                 <button type="button" class="range-btn" data-range="all">全部</button>
@@ -572,6 +574,12 @@
                 <span class="panel-sub">纵轴为持仓数量</span>
             </div>
             <div id="hist-grid" class="hist-grid"></div>
+            <div class="panel-head" style="margin-top: 28px;">
+                <span class="accent-line" aria-hidden="true"></span>
+                <h2 class="panel-title">分 ETF 成本与市值</h2>
+                <span class="panel-sub">同一张图上叠加持仓成本合计与市值</span>
+            </div>
+            <div id="value-grid" class="hist-grid"></div>
         </section>
     </main>
     <footer class="site-footer">
@@ -770,6 +778,7 @@
         }
 
         let seriesByCode = {};
+        let valueByCode = {};
         let accountByDate = {};
         let names = {};
         let allDates = [];
@@ -793,6 +802,54 @@
             return NaN;
         }
 
+        function registerOriginFillVsPlugin() {
+            if (typeof Chart === 'undefined' || Chart.registry.plugins.get('originFillVs')) return;
+            Chart.register({
+                id: 'originFillVs',
+                beforeDatasetsDraw(chart) {
+                    const { ctx, chartArea, data } = chart;
+                    if (!chartArea) return;
+                    data.datasets.forEach((ds, di) => {
+                        const cfg = ds.originFillVs;
+                        if (!cfg) return;
+                        const meta = chart.getDatasetMeta(di);
+                        if (meta.hidden || !meta.data.length) return;
+                        const series = Array.isArray(ds.data) ? ds.data : [];
+                        const compareData = data.datasets[cfg.compareIndex ?? 0]?.data || [];
+                        const above = cfg.above || 'rgba(59, 138, 138, 0.16)';
+                        const below = cfg.below || 'rgba(244, 67, 54, 0.22)';
+                        const bottom = chartArea.bottom;
+                        const points = meta.data;
+                        ctx.save();
+                        try {
+                            ctx.beginPath();
+                            ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+                            ctx.clip();
+                            for (let i = 0; i < points.length - 1; i++) {
+                                const p0 = points[i];
+                                const p1 = points[i + 1];
+                                if (!p0 || !p1 || p0.skip || p1.skip) continue;
+                                if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y) || !Number.isFinite(p1.x) || !Number.isFinite(p1.y)) continue;
+                                const y0 = Number(series[i]);
+                                const c0 = Number(compareData[i]);
+                                const underwater = Number.isFinite(y0) && Number.isFinite(c0) && y0 < c0;
+                                ctx.fillStyle = underwater ? below : above;
+                                ctx.beginPath();
+                                ctx.moveTo(p0.x, bottom);
+                                ctx.lineTo(p0.x, p0.y);
+                                ctx.lineTo(p1.x, p1.y);
+                                ctx.lineTo(p1.x, bottom);
+                                ctx.closePath();
+                                ctx.fill();
+                            }
+                        } finally {
+                            ctx.restore();
+                        }
+                    });
+                }
+            });
+        }
+
         const NUM_GROUP_KEY = '10etf-num-group';
         const THEME_KEY = '10etf-theme';
         const GATE_KEY = '10etf-gate-ok';
@@ -804,6 +861,7 @@
         }
         function applyChartDefaults() {
             if (typeof Chart === 'undefined') return;
+            registerOriginFillVsPlugin();
             Chart.defaults.color = cssVar('--chart-muted');
             Chart.defaults.borderColor = cssVar('--border');
             Chart.defaults.font.family = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif";
@@ -866,42 +924,63 @@
             return 'lg';
         }
 
-        function drawLine(canvasId, values, dates, opts) {
+        function drawChart(canvasId, dates, datasets, opts) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
             if (canvasId !== 'chart-fs') {
-                chartSeries[canvasId] = { values, dates, opts };
+                chartSeries[canvasId] = { dates, datasets, opts };
             }
-            if (charts[canvasId]) charts[canvasId].destroy();
-            const border = opts.color;
+            if (charts[canvasId]) {
+                charts[canvasId].destroy();
+                delete charts[canvasId];
+            }
+            const leftover = typeof Chart !== 'undefined' ? Chart.getChart(canvas) : null;
+            if (leftover) leftover.destroy();
             const tier = screenTier();
             const aspect = tier === 'sm' ? 1.7 : (tier === 'md' ? 2.1 : 2.8);
             const fs = canvasId === 'chart-fs';
+            const multi = datasets.length > 1;
             charts[canvasId] = new Chart(canvas.getContext('2d'), {
                 type: 'line',
                 data: {
                     labels: dates,
-                    datasets: [{
-                        data: values.map((v) => (Number.isFinite(v) ? v : null)),
-                        borderColor: border,
-                        backgroundColor: fillOf(border),
-                        fill: true,
+                    datasets: datasets.map((ds) => ({
+                        label: ds.label || '',
+                        data: ds.values.map((v) => (Number.isFinite(v) ? v : null)),
+                        borderColor: ds.color,
+                        backgroundColor: fillOf(ds.color),
+                        fill: ds.fill !== undefined ? ds.fill : !multi,
                         tension: 0.25,
                         spanGaps: true,
                         pointRadius: dates.length <= 2 ? 4 : (fs ? 3 : 2),
                         pointHoverRadius: 6,
-                        borderWidth: fs ? 2.5 : 2
-                    }]
+                        borderWidth: fs ? 2.5 : 2,
+                        borderDash: ds.dash || [],
+                        originFillVs: ds.originFillVs || null
+                    }))
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: !fs,
                     aspectRatio: aspect,
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: { display: false },
+                        legend: {
+                            display: multi,
+                            labels: {
+                                color: cssVar('--chart-muted'),
+                                boxWidth: 10,
+                                boxHeight: 2,
+                                font: { size: fs ? 12 : 10 }
+                            }
+                        },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => opts.tooltip(ctx.parsed.y)
+                                label: (ctx) => {
+                                    const y = ctx.parsed.y;
+                                    if (opts.tooltip) return opts.tooltip(y, ctx);
+                                    return (ctx.dataset.label ? ctx.dataset.label + ' ' : '') + String(y);
+                                }
                             }
                         }
                     },
@@ -924,12 +1003,20 @@
             });
         }
 
+        function drawLine(canvasId, values, dates, opts) {
+            drawChart(canvasId, dates, [{
+                label: opts.label || '',
+                values,
+                color: opts.color
+            }], opts);
+        }
+
         function redrawFsChart() {
             const dlg = document.getElementById('chartFsDialog');
             if (!dlg || !dlg.open || !fsSourceId) return;
             const d = chartSeries[fsSourceId];
             if (!d) return;
-            drawLine('chart-fs', d.values, d.dates, d.opts);
+            drawChart('chart-fs', d.dates, d.datasets, d.opts);
         }
 
         function openChartFs(canvasId) {
@@ -1009,6 +1096,35 @@
                     beginAtZero: true,
                     tick: (v) => formatGrouped(Number(v), 0)
                 });
+
+                const vmap = valueByCode[code] || {};
+                const costs = dates.map((d) => (d in vmap ? vmap[d].cost : 0));
+                const mvs = dates.map((d) => (d in vmap ? vmap[d].mv : 0));
+                const lastCost = lastFinite(costs);
+                const lastMv = lastFinite(mvs);
+                const vmeta = document.getElementById(`meta-value-${code}`);
+                if (vmeta) {
+                    vmeta.textContent = dates.length
+                        ? `市值 ${yen(lastMv)} · 成本 ${yen(lastCost)}`
+                        : '—';
+                }
+                drawChart(`chart-value-${code}`, dates, [
+                    { label: '持仓成本', values: costs, color: 'rgba(201, 168, 76, 0.95)', dash: [5, 4], fill: false },
+                    {
+                        label: '市值',
+                        values: mvs,
+                        color: 'rgba(59, 138, 138, 0.95)',
+                        fill: false,
+                        originFillVs: {
+                            compareIndex: 0,
+                            above: 'rgba(59, 138, 138, 0.16)',
+                            below: 'rgba(244, 67, 54, 0.22)'
+                        }
+                    }
+                ], {
+                    tooltip: (y, ctx) => (ctx.dataset.label || '') + ' ' + yen(y),
+                    tick: yenTick
+                });
             });
             redrawFsChart();
         }
@@ -1026,25 +1142,31 @@
             drawCharts();
         }
 
-        function buildGrid() {
-            const grid = document.getElementById('hist-grid');
-            grid.innerHTML = ETF_CODES.map((code) => {
-                const label = `${displayName(code)}[${code}]`;
-                return `
+        function chartCard(code, canvasId, metaId) {
+            const label = `${displayName(code)}[${code}]`;
+            return `
                 <div class="chart-container">
-                    <button type="button" class="chart-fs-btn" data-canvas="chart-${code}" aria-label="全屏查看" title="全屏查看">
+                    <button type="button" class="chart-fs-btn" data-canvas="${canvasId}" aria-label="全屏查看" title="全屏查看">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
                         </svg>
                     </button>
                     <div class="chart-head">
                         <button type="button" class="etf-jump" data-code="${escapeHtml(code)}" data-label="${escapeHtml(label)}" title="选择打开英为财情或雪球">${escapeHtml(label)}</button>
-                        <span class="meta" id="meta-${code}">—</span>
+                        <span class="meta" id="${metaId}">—</span>
                     </div>
-                    <canvas id="chart-${code}"></canvas>
+                    <canvas id="${canvasId}"></canvas>
                 </div>
             `;
-            }).join('');
+        }
+
+        function buildGrid() {
+            document.getElementById('hist-grid').innerHTML = ETF_CODES.map((code) =>
+                chartCard(code, `chart-${code}`, `meta-${code}`)
+            ).join('');
+            document.getElementById('value-grid').innerHTML = ETF_CODES.map((code) =>
+                chartCard(code, `chart-value-${code}`, `meta-value-${code}`)
+            ).join('');
         }
 
         function syncNumToggle() {
@@ -1074,11 +1196,13 @@
             bindThemeToggle();
             bindJumpDialog();
             bindChartFs();
-            document.getElementById('hist-grid').addEventListener('click', (e) => {
+            const onEtfJump = (e) => {
                 const jump = e.target.closest('.etf-jump');
                 if (!jump) return;
                 openJumpDialog(jump.dataset.code || '', jump.dataset.label || jump.textContent);
-            });
+            };
+            document.getElementById('hist-grid').addEventListener('click', onEtfJump);
+            document.getElementById('value-grid').addEventListener('click', onEtfJump);
             document.querySelectorAll('.range-btn').forEach((btn) => {
                 btn.addEventListener('click', () => setRange(btn.dataset.range));
             });
@@ -1122,6 +1246,7 @@
 
             allDates = [];
             seriesByCode = Object.fromEntries(ETF_CODES.map((c) => [c, {}]));
+            valueByCode = Object.fromEntries(ETF_CODES.map((c) => [c, {}]));
             accountByDate = {};
             names = {};
             for (const row of payloads) {
@@ -1140,6 +1265,12 @@
                     const code = String(it.code || '').trim();
                     if (!seriesByCode[code]) continue;
                     seriesByCode[code][day] = Number(it.amount) || 0;
+                    const costVal = Number(it.cost_value);
+                    const mvVal = Number(it.market_value);
+                    valueByCode[code][day] = {
+                        cost: Number.isFinite(costVal) ? costVal : 0,
+                        mv: Number.isFinite(mvVal) ? mvVal : 0
+                    };
                     const n = NAME_OVERRIDE[code] || String(it.name || '').trim();
                     if (n) names[code] = n;
                 }
