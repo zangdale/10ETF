@@ -4,6 +4,11 @@
     --nav-height: calc(var(--nav-control-h) + 20px);
 }
 
+/* Reserve space for fixed nav; cleared when sticky at ≤1024px */
+body {
+    padding-top: calc(var(--nav-height) + var(--safe-top));
+}
+
 .topnav {
     position: fixed;
     inset: 0 0 auto 0;
