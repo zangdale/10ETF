@@ -1175,13 +1175,13 @@
             if (weightChart) weightChart.destroy();
             chartAllRows = [...rows];
             if (resetHidden) hiddenBarCodes.clear();
-            const sorted = [...rows].sort((a, b) => b.market_value - a.market_value);
+            const pieRows = [...rows].sort((a, b) => b.market_value - a.market_value);
             weightChart = new Chart(pie.getContext('2d'), {
                 type: 'doughnut',
                 data: {
-                    labels: sorted.map((r) => displayLabel(r)),
+                    labels: pieRows.map((r) => displayLabel(r)),
                     datasets: [{
-                        data: sorted.map((r) => r.weight),
+                        data: pieRows.map((r) => r.weight),
                         backgroundColor: colors,
                         borderColor: cssVar('--chart-slice-border'),
                         borderWidth: 2
@@ -1194,7 +1194,7 @@
                     plugins: {
                         title: { ...titleStyle, text: '市值仓位占比' },
                         legend: { position: 'bottom', labels: { color: cssVar('--chart-muted'), font: { size: mq ? 9 : 10 }, boxWidth: 10 } },
-                        ...shareTooltipFor(sorted)
+                        ...shareTooltipFor(pieRows)
                     }
                 }
             });

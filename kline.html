@@ -659,6 +659,49 @@
         const chartSeries = {};
         let fsSourceId = '';
 
+        function codesFromHold(payload) {
+            const items = payload && Array.isArray(payload.items) ? payload.items : [];
+            const codes = [];
+            const seen = new Set();
+            for (const it of items) {
+                const c = String(it.code || '').trim();
+                if (c && !seen.has(c)) {
+                    seen.add(c);
+                    codes.push(c);
+                }
+            }
+            return codes;
+        }
+
+        function orderByHoldCodes(items, holdCodes) {
+            if (!holdCodes.length) return items;
+            const byCode = new Map(items.map((row) => [String(row.code || ''), row]));
+            const ordered = [];
+            const used = new Set();
+            for (const code of holdCodes) {
+                const row = byCode.get(code);
+                if (row) {
+                    ordered.push(row);
+                    used.add(code);
+                }
+            }
+            for (const row of items) {
+                const code = String(row.code || '');
+                if (code && !used.has(code)) ordered.push(row);
+            }
+            return ordered;
+        }
+
+        async function loadHoldCodes() {
+            try {
+                const r = await fetch('etf_hold.json', { cache: 'no-store' });
+                if (!r.ok) return [];
+                return codesFromHold(await r.json());
+            } catch {
+                return [];
+            }
+        }
+
         function ymd(d) {
             const y = d.getFullYear();
             const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -1155,6 +1198,8 @@
             }
 
             infoItems = info.items.filter((row) => row && row.code);
+            const holdCodes = await loadHoldCodes();
+            infoItems = orderByHoldCodes(infoItems, holdCodes);
             infoByCode = Object.fromEntries(infoItems.map((row) => [row.code, row]));
             document.getElementById('nav-fetched').textContent = info.fetched_at || '—';
             empty.hidden = true;

@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-09-16T15:07:37",
+  "fetched_at": "2026-09-16T15:20:58",
   "date": "2026-09-16",
   "position": 0.0,
   "total": 305532.06,
@@ -7,19 +7,6 @@
   "total_value": 303529.2,
   "available": 381.66,
   "items": [
-    {
-      "code": "159307",
-      "name": "100红利",
-      "amount": 44700,
-      "available": 44200,
-      "cost": 1.01,
-      "cost_value": 45147.0,
-      "price": 1.005,
-      "market_value": 44923.5,
-      "pnl": -223.5,
-      "pnl_pct": -0.5,
-      "tiingo_name": "Bosera CSI Dividend Low Volatility 100 Index ETF"
-    },
     {
       "code": "515180",
       "name": "中证红利",
@@ -32,6 +19,19 @@
       "pnl": 1147.6,
       "pnl_pct": 5.67,
       "tiingo_name": "E Fund Management Company. Ltd"
+    },
+    {
+      "code": "159307",
+      "name": "100红利",
+      "amount": 44700,
+      "available": 44200,
+      "cost": 1.01,
+      "cost_value": 45147.0,
+      "price": 1.005,
+      "market_value": 44923.5,
+      "pnl": -223.5,
+      "pnl_pct": -0.5,
+      "tiingo_name": "Bosera CSI Dividend Low Volatility 100 Index ETF"
     },
     {
       "code": "561580",
@@ -47,30 +47,17 @@
       "tiingo_name": "HuataiPineBridge Fund Management Co Ltd"
     },
     {
-      "code": "159985",
-      "name": "豆粕ETF",
-      "amount": 100,
-      "available": 100,
-      "cost": -15.025,
-      "cost_value": -1502.5,
-      "price": 2.383,
-      "market_value": 238.3,
-      "pnl": 1740.8,
-      "pnl_pct": null,
-      "tiingo_name": "China Asset Management Company. Ltd"
-    },
-    {
-      "code": "511360",
-      "name": "短融ETF",
-      "amount": 1100,
-      "available": 1100,
-      "cost": 113.589,
-      "cost_value": 124947.9,
-      "price": 113.922,
-      "market_value": 125314.2,
-      "pnl": 366.3,
-      "pnl_pct": 0.29,
-      "tiingo_name": "HFT Investment Management Co. Ltd."
+      "code": "513870",
+      "name": "纳指指数",
+      "amount": 2200,
+      "available": 2200,
+      "cost": 1.735,
+      "cost_value": 3817.0,
+      "price": 2.04,
+      "market_value": 4488.0,
+      "pnl": 671.0,
+      "pnl_pct": 17.58,
+      "tiingo_name": "Fullgoal Fund Management Co Ltd"
     },
     {
       "code": "513650",
@@ -86,32 +73,6 @@
       "tiingo_name": "China Southern Asset Management Co. Ltd"
     },
     {
-      "code": "511010",
-      "name": "国债ETF",
-      "amount": 500,
-      "available": 500,
-      "cost": 140.84,
-      "cost_value": 70420.0,
-      "price": 141.226,
-      "market_value": 70613.0,
-      "pnl": 193.0,
-      "pnl_pct": 0.27,
-      "tiingo_name": "Guotai Asset Management Company Ltd"
-    },
-    {
-      "code": "513870",
-      "name": "纳指指数",
-      "amount": 2200,
-      "available": 2200,
-      "cost": 1.735,
-      "cost_value": 3817.0,
-      "price": 2.04,
-      "market_value": 4488.0,
-      "pnl": 671.0,
-      "pnl_pct": 17.58,
-      "tiingo_name": "Fullgoal Fund Management Co Ltd"
-    },
-    {
       "code": "520870",
       "name": "巴西ETF",
       "amount": 2700,
@@ -125,6 +86,19 @@
       "tiingo_name": "E Fund Itau IBOVESPA Exchange Traded Fund (QDII)"
     },
     {
+      "code": "159985",
+      "name": "豆粕ETF",
+      "amount": 100,
+      "available": 100,
+      "cost": -15.025,
+      "cost_value": -1502.5,
+      "price": 2.383,
+      "market_value": 238.3,
+      "pnl": 1740.8,
+      "pnl_pct": null,
+      "tiingo_name": "China Asset Management Company. Ltd"
+    },
+    {
       "code": "518680",
       "name": "金ETF",
       "amount": 1000,
@@ -136,6 +110,32 @@
       "pnl": 169.0,
       "pnl_pct": 1.84,
       "tiingo_name": "Fullgoal Fund Management Co Ltd"
+    },
+    {
+      "code": "511010",
+      "name": "国债ETF",
+      "amount": 500,
+      "available": 500,
+      "cost": 140.84,
+      "cost_value": 70420.0,
+      "price": 141.226,
+      "market_value": 70613.0,
+      "pnl": 193.0,
+      "pnl_pct": 0.27,
+      "tiingo_name": "Guotai Asset Management Company Ltd"
+    },
+    {
+      "code": "511360",
+      "name": "短融ETF",
+      "amount": 1100,
+      "available": 1100,
+      "cost": 113.589,
+      "cost_value": 124947.9,
+      "price": 113.922,
+      "market_value": 125314.2,
+      "pnl": 366.3,
+      "pnl_pct": 0.29,
+      "tiingo_name": "HFT Investment Management Co. Ltd."
     }
   ]
 }

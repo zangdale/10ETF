@@ -644,10 +644,7 @@
     </dialog>
 
     <script>
-        const ETF_CODES = [
-            '561580', '511360', '159985', '515180', '511010',
-            '520870', '513650', '518680', '159307', '513870'
-        ];
+        let ETF_CODES = [];
         const INVESTING_SLUG = { '511010': 'guotai-sse-deliverable-5-tb' };
         const NAME_OVERRIDE = { '515180': '中证红利' };
         const RANGE_LABEL = { all: '全部', month: '本月', year: '本年', '1y': '一年', custom: '自定义' };
@@ -663,6 +660,30 @@
             'rgba(33, 150, 243, 0.85)',
             'rgba(156, 39, 176, 0.8)'
         ];
+
+        function codesFromHold(payload) {
+            const items = payload && Array.isArray(payload.items) ? payload.items : [];
+            const codes = [];
+            const seen = new Set();
+            for (const it of items) {
+                const c = String(it.code || '').trim();
+                if (c && !seen.has(c)) {
+                    seen.add(c);
+                    codes.push(c);
+                }
+            }
+            return codes;
+        }
+
+        async function loadHoldCodes() {
+            try {
+                const r = await fetch('etf_hold.json', { cache: 'no-store' });
+                if (!r.ok) return [];
+                return codesFromHold(await r.json());
+            } catch {
+                return [];
+            }
+        }
 
         function ymd(d) {
             const y = d.getFullYear();
@@ -1215,6 +1236,16 @@
             };
             fromEl.addEventListener('change', onCustom);
             toEl.addEventListener('change', onCustom);
+
+            const holdCodes = await loadHoldCodes();
+            if (!holdCodes.length) {
+                document.getElementById('hist-empty').hidden = false;
+                document.getElementById('hist-empty').textContent = '暂无 etf_hold.json，请先执行 make hold。';
+                document.getElementById('summary-grid').hidden = true;
+                document.getElementById('nav-days').textContent = '0';
+                return;
+            }
+            ETF_CODES = holdCodes;
 
             let dates = [];
             try {
