@@ -827,15 +827,18 @@
             Chart.register({
                 id: 'originFillVs',
                 beforeDatasetsDraw(chart) {
-                    const { ctx, chartArea, data } = chart;
+                    const { ctx, chartArea, data, scales } = chart;
                     if (!chartArea) return;
+                    const yScale = scales.y;
                     data.datasets.forEach((ds, di) => {
                         const cfg = ds.originFillVs;
                         if (!cfg) return;
                         const meta = chart.getDatasetMeta(di);
                         if (meta.hidden || !meta.data.length) return;
                         const series = Array.isArray(ds.data) ? ds.data : [];
-                        const compareData = data.datasets[cfg.compareIndex ?? 0]?.data || [];
+                        const compareDi = cfg.compareIndex ?? 0;
+                        const compareData = data.datasets[compareDi]?.data || [];
+                        const compareMeta = chart.getDatasetMeta(compareDi);
                         const above = cfg.above || 'rgba(59, 138, 138, 0.16)';
                         const below = cfg.below || 'rgba(244, 67, 54, 0.22)';
                         const bottom = chartArea.bottom;
@@ -852,12 +855,23 @@
                                 if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y) || !Number.isFinite(p1.x) || !Number.isFinite(p1.y)) continue;
                                 const y0 = Number(series[i]);
                                 const c0 = Number(compareData[i]);
+                                const c1 = Number(compareData[i + 1]);
                                 const underwater = Number.isFinite(y0) && Number.isFinite(c0) && y0 < c0;
+                                let top0 = p0.y;
+                                let top1 = p1.y;
+                                if (underwater) {
+                                    const cp0 = compareMeta.data[i];
+                                    const cp1 = compareMeta.data[i + 1];
+                                    if (cp0 && !cp0.skip && Number.isFinite(cp0.y)) top0 = cp0.y;
+                                    else if (yScale && Number.isFinite(c0)) top0 = yScale.getPixelForValue(c0);
+                                    if (cp1 && !cp1.skip && Number.isFinite(cp1.y)) top1 = cp1.y;
+                                    else if (yScale && Number.isFinite(c1)) top1 = yScale.getPixelForValue(c1);
+                                }
                                 ctx.fillStyle = underwater ? below : above;
                                 ctx.beginPath();
                                 ctx.moveTo(p0.x, bottom);
-                                ctx.lineTo(p0.x, p0.y);
-                                ctx.lineTo(p1.x, p1.y);
+                                ctx.lineTo(p0.x, top0);
+                                ctx.lineTo(p1.x, top1);
                                 ctx.lineTo(p1.x, bottom);
                                 ctx.closePath();
                                 ctx.fill();
