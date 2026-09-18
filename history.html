@@ -1014,6 +1014,10 @@
                                     const y = ctx.parsed.y;
                                     if (opts.tooltip) return opts.tooltip(y, ctx);
                                     return (ctx.dataset.label ? ctx.dataset.label + ' ' : '') + String(y);
+                                },
+                                afterBody: (items) => {
+                                    if (!opts.tooltipAfter) return '';
+                                    return opts.tooltipAfter(items);
                                 }
                             }
                         }
@@ -1157,6 +1161,18 @@
                     }
                 ], {
                     tooltip: (y, ctx) => (ctx.dataset.label || '') + ' ' + yen(y),
+                    tooltipAfter: (items) => {
+                        const byLabel = {};
+                        for (const it of items) {
+                            byLabel[it.dataset.label] = it.parsed.y;
+                        }
+                        const cost = byLabel['持仓成本'];
+                        const mv = byLabel['市值'];
+                        if (!Number.isFinite(cost) || !Number.isFinite(mv)) return '浮动盈亏 —';
+                        const pnl = mv - cost;
+                        const pct = cost > 0 ? (pnl / cost) * 100 : NaN;
+                        return '浮动盈亏 ' + yen(pnl) + (Number.isFinite(pct) ? '  ' + pct.toFixed(2) + '%' : '');
+                    },
                     tick: yenTick
                 });
             });
