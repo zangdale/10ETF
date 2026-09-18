@@ -1152,9 +1152,9 @@
             const rangeDates = filterDates();
             document.getElementById('nav-range').textContent = RANGE_LABEL[activeRange] || '自定义';
 
-            const totals = allDates.map((d) => accountByDate[d]?.total);
-            const pnls = allDates.map((d) => accountByDate[d]?.pnl);
-            const pcts = allDates.map((d) => accountByDate[d]?.pnlPct);
+            const totals = rangeDates.map((d) => accountByDate[d]?.total);
+            const pnls = rangeDates.map((d) => accountByDate[d]?.pnl);
+            const pcts = rangeDates.map((d) => accountByDate[d]?.pnlPct);
             document.getElementById('meta-acct-total').textContent = yen(lastFinite(totals));
             document.getElementById('meta-acct-pnl').textContent = yen(lastFinite(pnls));
             const lastPct = lastFinite(pcts);
@@ -1162,17 +1162,17 @@
                 Number.isFinite(lastPct) ? lastPct.toFixed(2) + '%' : '—';
 
             const yenTick = (v) => formatGrouped(Number(v), 0);
-            drawLine('chart-acct-total', totals, allDates, {
+            drawLine('chart-acct-total', totals, rangeDates, {
                 color: 'rgba(201, 168, 76, 0.95)',
                 tooltip: (y) => '总资产 ' + yen(y),
                 tick: yenTick
             });
-            drawLine('chart-acct-pnl', pnls, allDates, {
+            drawLine('chart-acct-pnl', pnls, rangeDates, {
                 color: 'rgba(244, 67, 54, 0.75)',
                 tooltip: (y) => '浮动盈亏 ' + yen(y),
                 tick: yenTick
             });
-            drawLine('chart-acct-pnl-pct', pcts, allDates, {
+            drawLine('chart-acct-pnl-pct', pcts, rangeDates, {
                 color: 'rgba(59, 138, 138, 0.95)',
                 tooltip: (y) => Number.isFinite(y) ? '浮动盈亏% ' + y.toFixed(2) + '%' : '—',
                 tick: (v) => Number(v).toFixed(1) + '%'
