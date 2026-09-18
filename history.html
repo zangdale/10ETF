@@ -335,7 +335,8 @@
             .hist-grid { grid-template-columns: 1fr 1fr; }
         }
         @media (min-width: 1100px) {
-            #summary-grid.hist-grid { grid-template-columns: 1fr 1fr 1fr; }
+            #summary-grid.hist-grid,
+            #range-grid.hist-grid { grid-template-columns: 1fr 1fr 1fr; }
             #hist-grid.hist-grid { grid-template-columns: 1fr 1fr; }
         }
         .chart-container {
@@ -565,6 +566,49 @@
                         <span class="meta" id="meta-acct-pnl-pct">—</span>
                     </div>
                     <canvas id="chart-acct-pnl-pct"></canvas>
+                </div>
+            </div>
+            <div class="panel-head" id="range-head" style="margin-top: 28px;">
+                <span class="accent-line" aria-hidden="true"></span>
+                <h2 class="panel-title">区间变化</h2>
+                <span class="panel-sub">随上方时间范围变化 · 相对区间首日，起点为 0</span>
+            </div>
+            <div id="range-grid" class="hist-grid">
+                <div class="chart-container">
+                    <button type="button" class="chart-fs-btn" data-canvas="chart-range-total" aria-label="全屏查看" title="全屏查看">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                        </svg>
+                    </button>
+                    <div class="chart-head">
+                        <span class="title">区间资产变化</span>
+                        <span class="meta" id="meta-range-total">—</span>
+                    </div>
+                    <canvas id="chart-range-total"></canvas>
+                </div>
+                <div class="chart-container">
+                    <button type="button" class="chart-fs-btn" data-canvas="chart-range-pnl" aria-label="全屏查看" title="全屏查看">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                        </svg>
+                    </button>
+                    <div class="chart-head">
+                        <span class="title">区间浮动盈亏</span>
+                        <span class="meta" id="meta-range-pnl">—</span>
+                    </div>
+                    <canvas id="chart-range-pnl"></canvas>
+                </div>
+                <div class="chart-container">
+                    <button type="button" class="chart-fs-btn" data-canvas="chart-range-pnl-pct" aria-label="全屏查看" title="全屏查看">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                        </svg>
+                    </button>
+                    <div class="chart-head">
+                        <span class="title">区间浮动盈亏%</span>
+                        <span class="meta" id="meta-range-pnl-pct">—</span>
+                    </div>
+                    <canvas id="chart-range-pnl-pct"></canvas>
                 </div>
             </div>
             <div class="panel-head" style="margin-top: 28px;">
@@ -820,6 +864,18 @@
                 if (Number.isFinite(values[i])) return values[i];
             }
             return NaN;
+        }
+
+        function rebaseFromStart(values) {
+            let base = NaN;
+            for (let i = 0; i < values.length; i++) {
+                if (Number.isFinite(values[i])) {
+                    base = values[i];
+                    break;
+                }
+            }
+            if (!Number.isFinite(base)) return values.map(() => NaN);
+            return values.map((v) => (Number.isFinite(v) ? v - base : NaN));
         }
 
         function registerOriginFillVsPlugin() {
@@ -1093,12 +1149,12 @@
         }
 
         function drawCharts() {
-            const dates = filterDates();
+            const rangeDates = filterDates();
             document.getElementById('nav-range').textContent = RANGE_LABEL[activeRange] || '自定义';
 
-            const totals = dates.map((d) => accountByDate[d]?.total);
-            const pnls = dates.map((d) => accountByDate[d]?.pnl);
-            const pcts = dates.map((d) => accountByDate[d]?.pnlPct);
+            const totals = allDates.map((d) => accountByDate[d]?.total);
+            const pnls = allDates.map((d) => accountByDate[d]?.pnl);
+            const pcts = allDates.map((d) => accountByDate[d]?.pnlPct);
             document.getElementById('meta-acct-total').textContent = yen(lastFinite(totals));
             document.getElementById('meta-acct-pnl').textContent = yen(lastFinite(pnls));
             const lastPct = lastFinite(pcts);
@@ -1106,21 +1162,51 @@
                 Number.isFinite(lastPct) ? lastPct.toFixed(2) + '%' : '—';
 
             const yenTick = (v) => formatGrouped(Number(v), 0);
-            drawLine('chart-acct-total', totals, dates, {
+            drawLine('chart-acct-total', totals, allDates, {
                 color: 'rgba(201, 168, 76, 0.95)',
                 tooltip: (y) => '总资产 ' + yen(y),
                 tick: yenTick
             });
-            drawLine('chart-acct-pnl', pnls, dates, {
+            drawLine('chart-acct-pnl', pnls, allDates, {
                 color: 'rgba(244, 67, 54, 0.75)',
                 tooltip: (y) => '浮动盈亏 ' + yen(y),
                 tick: yenTick
             });
-            drawLine('chart-acct-pnl-pct', pcts, dates, {
+            drawLine('chart-acct-pnl-pct', pcts, allDates, {
                 color: 'rgba(59, 138, 138, 0.95)',
                 tooltip: (y) => Number.isFinite(y) ? '浮动盈亏% ' + y.toFixed(2) + '%' : '—',
                 tick: (v) => Number(v).toFixed(1) + '%'
             });
+
+            const rangeTotals = rebaseFromStart(rangeDates.map((d) => accountByDate[d]?.total));
+            const rangePnls = rebaseFromStart(rangeDates.map((d) => accountByDate[d]?.pnl));
+            const rangePcts = rebaseFromStart(rangeDates.map((d) => accountByDate[d]?.pnlPct));
+            document.getElementById('meta-range-total').textContent = yen(lastFinite(rangeTotals));
+            document.getElementById('meta-range-pnl').textContent = yen(lastFinite(rangePnls));
+            const lastRangePct = lastFinite(rangePcts);
+            document.getElementById('meta-range-pnl-pct').textContent =
+                Number.isFinite(lastRangePct) ? lastRangePct.toFixed(2) + '%' : '—';
+
+            drawLine('chart-range-total', rangeTotals, rangeDates, {
+                color: 'rgba(201, 168, 76, 0.95)',
+                tooltip: (y) => '区间资产 ' + yen(y),
+                tick: yenTick,
+                beginAtZero: true
+            });
+            drawLine('chart-range-pnl', rangePnls, rangeDates, {
+                color: 'rgba(244, 67, 54, 0.75)',
+                tooltip: (y) => '区间盈亏 ' + yen(y),
+                tick: yenTick,
+                beginAtZero: true
+            });
+            drawLine('chart-range-pnl-pct', rangePcts, rangeDates, {
+                color: 'rgba(59, 138, 138, 0.95)',
+                tooltip: (y) => Number.isFinite(y) ? '区间盈亏% ' + y.toFixed(2) + '%' : '—',
+                tick: (v) => Number(v).toFixed(1) + '%',
+                beginAtZero: true
+            });
+
+            const dates = rangeDates;
 
             ETF_CODES.forEach((code, i) => {
                 const map = seriesByCode[code] || {};
@@ -1287,9 +1373,13 @@
 
             const empty = document.getElementById('hist-empty');
             const summary = document.getElementById('summary-grid');
+            const rangeGrid = document.getElementById('range-grid');
+            const rangeHead = document.getElementById('range-head');
             if (!dates.length) {
                 empty.hidden = false;
                 summary.hidden = true;
+                if (rangeGrid) rangeGrid.hidden = true;
+                if (rangeHead) rangeHead.hidden = true;
                 document.getElementById('nav-days').textContent = '0';
                 return;
             }
