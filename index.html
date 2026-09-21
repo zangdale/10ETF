@@ -1001,8 +1001,17 @@
                         label(ctx) {
                             const r = sorted[ctx.dataIndex];
                             if (!r) return '';
+                            // 图例隐藏后，按当前可见项市值重算占比
+                            const chart = ctx.chart;
+                            let visMv = 0;
+                            for (let i = 0; i < sorted.length; i++) {
+                                if (chart.getDataVisibility(i)) {
+                                    visMv += sorted[i].market_value;
+                                }
+                            }
+                            const weight = visMv > 0 ? (r.market_value / visMv) * 100 : 0;
                             return [
-                                `持仓占比 ${r.weight.toFixed(2)}%`,
+                                `持仓占比 ${weight.toFixed(2)}%`,
                                 `持仓金额¥ ${money(r.market_value)}`,
                                 `浮动盈亏¥ ${money(r.pnl)}`,
                                 `浮动盈亏% ${pctNum(r.pnl_pct, 2)}`
@@ -1010,7 +1019,7 @@
                         }
                     }
                 }
-            };      
+            };
         }
 
         function visibleBarRows() {
