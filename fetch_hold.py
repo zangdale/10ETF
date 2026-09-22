@@ -395,12 +395,49 @@ NAME_OVERRIDES = {
     "515180": "中证红利",
 }
 
+TEMP_NAME_RE = re.compile(r"^(XD|XR|DR)")
+
+
+def load_prev_hold_names() -> dict[str, str]:
+    path = ROOT / "etf_hold.json"
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        return {}
+    out: dict[str, str] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        code = str(item.get("code") or "").strip()
+        name = str(item.get("name") or "").strip()
+        if code and name and not TEMP_NAME_RE.match(name):
+            out[code] = name
+    return out
+
 
 def apply_name_overrides(items: list[dict[str, Any]]) -> None:
     for item in items:
         code = str(item.get("code") or "").strip()
         if code in NAME_OVERRIDES:
             item["name"] = NAME_OVERRIDES[code]
+
+
+def stabilize_temp_names(items: list[dict[str, Any]]) -> None:
+    """券商除权除息日会临时改成 XD/XR/DR 前缀名，沿用上一份规范简称。"""
+    prev = load_prev_hold_names()
+    for item in items:
+        code = str(item.get("code") or "").strip()
+        name = str(item.get("name") or "").strip()
+        if not code or not TEMP_NAME_RE.match(name):
+            continue
+        good = NAME_OVERRIDES.get(code) or prev.get(code)
+        if good:
+            item["name"] = good
 
 
 def main() -> int:
@@ -418,6 +455,7 @@ def main() -> int:
     try:
         snapshot = hold_list(adb)
         enrich_names_from_tiingo(snapshot["items"])
+        stabilize_temp_names(snapshot["items"])
         apply_name_overrides(snapshot["items"])
     except subprocess.CalledProcessError as e:
         err = (e.stderr or e.stdout or str(e)).strip()

@@ -718,13 +718,25 @@
             return codes;
         }
 
-        async function loadHoldCodes() {
+        function namesFromHold(payload) {
+            const items = payload && Array.isArray(payload.items) ? payload.items : [];
+            const out = {};
+            for (const it of items) {
+                const c = String(it.code || '').trim();
+                const n = String(it.name || '').trim();
+                if (c && n) out[c] = NAME_OVERRIDE[c] || n;
+            }
+            return out;
+        }
+
+        async function loadHoldMeta() {
             try {
                 const r = await fetch('etf_hold.json', { cache: 'no-store' });
-                if (!r.ok) return [];
-                return codesFromHold(await r.json());
+                if (!r.ok) return { codes: [], names: {} };
+                const payload = await r.json();
+                return { codes: codesFromHold(payload), names: namesFromHold(payload) };
             } catch {
-                return [];
+                return { codes: [], names: {} };
             }
         }
 
@@ -1352,15 +1364,16 @@
             fromEl.addEventListener('change', onCustom);
             toEl.addEventListener('change', onCustom);
 
-            const holdCodes = await loadHoldCodes();
-            if (!holdCodes.length) {
+            const holdMeta = await loadHoldMeta();
+            if (!holdMeta.codes.length) {
                 document.getElementById('hist-empty').hidden = false;
                 document.getElementById('hist-empty').textContent = '暂无 etf_hold.json，请先执行 make hold。';
                 document.getElementById('summary-grid').hidden = true;
                 document.getElementById('nav-days').textContent = '0';
                 return;
             }
-            ETF_CODES = holdCodes;
+            ETF_CODES = holdMeta.codes;
+            names = { ...holdMeta.names };
 
             let dates = [];
             try {
@@ -1398,7 +1411,6 @@
             seriesByCode = Object.fromEntries(ETF_CODES.map((c) => [c, {}]));
             valueByCode = Object.fromEntries(ETF_CODES.map((c) => [c, {}]));
             accountByDate = {};
-            names = {};
             for (const row of payloads) {
                 if (!row || !row.data) continue;
                 const day = row.data.date || row.day;
@@ -1421,8 +1433,10 @@
                         cost: Number.isFinite(costVal) ? costVal : 0,
                         mv: Number.isFinite(mvVal) ? mvVal : 0
                     };
-                    const n = NAME_OVERRIDE[code] || String(it.name || '').trim();
-                    if (n) names[code] = n;
+                    if (!names[code]) {
+                        const n = NAME_OVERRIDE[code] || String(it.name || '').trim();
+                        if (n) names[code] = n;
+                    }
                 }
             }
             allDates = [...new Set(allDates)].sort();

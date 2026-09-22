@@ -540,6 +540,7 @@
 
         let infoItems = [];
         let infoByCode = {};
+        let holdNames = {};
         let chart = null;
         let returnChart = null;
         let fsChart = null;
@@ -565,6 +566,17 @@
             return codes;
         }
 
+        function namesFromHold(payload) {
+            const items = payload && Array.isArray(payload.items) ? payload.items : [];
+            const names = {};
+            for (const it of items) {
+                const c = String(it.code || '').trim();
+                const n = String(it.name || '').trim();
+                if (c && n) names[c] = NAME_OVERRIDE[c] || n;
+            }
+            return names;
+        }
+
         function orderByHoldCodes(items, holdCodes) {
             if (!holdCodes.length) return items;
             const byCode = new Map(items.map((row) => [String(row.code || ''), row]));
@@ -588,7 +600,9 @@
             try {
                 const r = await fetch('etf_hold.json', { cache: 'no-store' });
                 if (!r.ok) return [];
-                return codesFromHold(await r.json());
+                const payload = await r.json();
+                holdNames = namesFromHold(payload);
+                return codesFromHold(payload);
             } catch {
                 return [];
             }
@@ -601,7 +615,7 @@
             return `${y}-${m}-${day}`;
         }
         function displayName(code) {
-            return NAME_OVERRIDE[code] || (infoByCode[code] && infoByCode[code].name) || code;
+            return NAME_OVERRIDE[code] || holdNames[code] || (infoByCode[code] && infoByCode[code].name) || code;
         }
         function escapeHtml(s) {
             return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
