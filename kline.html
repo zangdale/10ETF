@@ -871,6 +871,10 @@
             if (!Number.isFinite(n)) return '—';
             return formatGrouped(n, 3);
         }
+        function pctFmt(n) {
+            if (!Number.isFinite(n)) return '—';
+            return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+        }
         function volFmt(n) {
             if (!Number.isFinite(n)) return '—';
             return formatGrouped(n, 0);
@@ -1150,8 +1154,16 @@
                 const code = row.code;
                 const bars = await loadBarsForCode(code, from, to);
                 const last = bars.length ? Number(bars[bars.length - 1].close) : NaN;
+                const first = bars.length ? Number(bars[0].close) : NaN;
+                const rangePct = first > 0 && Number.isFinite(first) && Number.isFinite(last)
+                    ? ((last - first) / first) * 100
+                    : NaN;
                 const meta = document.getElementById(`meta-${code}`);
-                if (meta) meta.textContent = bars.length ? priceFmt(last) : '无数据';
+                if (meta) {
+                    meta.textContent = bars.length
+                        ? `${priceFmt(last)} · ${pctFmt(rangePct)}`
+                        : '无数据';
+                }
                 drawLine(`chart-${code}`, bars, { color: LINE_COLORS[i % LINE_COLORS.length] });
             }));
         }
