@@ -571,7 +571,7 @@
             <div class="panel-head" id="range-head" style="margin-top: 28px;">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 class="panel-title">区间变化</h2>
-                <span class="panel-sub">随上方时间范围变化 · 各日减去前一交易日</span>
+                <span class="panel-sub">随上方时间范围变化 · 相对区间首日前一交易日累计</span>
             </div>
             <div id="range-grid" class="hist-grid">
                 <div class="chart-container">
@@ -878,13 +878,17 @@
             return NaN;
         }
 
-        function dayOverDay(rangeDates, pick) {
+        function intervalChange(rangeDates, pick) {
+            let base = NaN;
+            if (rangeDates.length) {
+                const idx = allDates.indexOf(rangeDates[0]);
+                if (idx > 0) base = pick(accountByDate[allDates[idx - 1]]);
+            }
             return rangeDates.map((d) => {
-                const idx = allDates.indexOf(d);
-                if (idx <= 0) return NaN;
                 const cur = pick(accountByDate[d]);
-                const prev = pick(accountByDate[allDates[idx - 1]]);
-                return Number.isFinite(cur) && Number.isFinite(prev) ? cur - prev : NaN;
+                if (!Number.isFinite(cur)) return NaN;
+                if (!Number.isFinite(base)) base = cur;
+                return cur - base;
             });
         }
 
@@ -1188,9 +1192,9 @@
                 tick: (v) => Number(v).toFixed(1) + '%'
             });
 
-            const rangeTotals = dayOverDay(rangeDates, (a) => a?.total);
-            const rangePnls = dayOverDay(rangeDates, (a) => a?.pnl);
-            const rangePcts = dayOverDay(rangeDates, (a) => a?.pnlPct);
+            const rangeTotals = intervalChange(rangeDates, (a) => a?.total);
+            const rangePnls = intervalChange(rangeDates, (a) => a?.pnl);
+            const rangePcts = intervalChange(rangeDates, (a) => a?.pnlPct);
             document.getElementById('meta-range-total').textContent = yen(lastFinite(rangeTotals));
             document.getElementById('meta-range-pnl').textContent = yen(lastFinite(rangePnls));
             const lastRangePct = lastFinite(rangePcts);
@@ -1199,19 +1203,19 @@
 
             drawLine('chart-range-total', rangeTotals, rangeDates, {
                 color: 'rgba(201, 168, 76, 0.95)',
-                tooltip: (y) => '较前一日 ' + yen(y),
+                tooltip: (y) => '区间变化 ' + yen(y),
                 tick: yenTick,
                 beginAtZero: true
             });
             drawLine('chart-range-pnl', rangePnls, rangeDates, {
                 color: 'rgba(244, 67, 54, 0.75)',
-                tooltip: (y) => '较前一日 ' + yen(y),
+                tooltip: (y) => '区间变化 ' + yen(y),
                 tick: yenTick,
                 beginAtZero: true
             });
             drawLine('chart-range-pnl-pct', rangePcts, rangeDates, {
                 color: 'rgba(59, 138, 138, 0.95)',
-                tooltip: (y) => Number.isFinite(y) ? '较前一日 ' + y.toFixed(2) + '%' : '—',
+                tooltip: (y) => Number.isFinite(y) ? '区间变化 ' + y.toFixed(2) + '%' : '—',
                 tick: (v) => Number(v).toFixed(1) + '%',
                 beginAtZero: true
             });
