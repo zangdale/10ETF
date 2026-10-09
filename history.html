@@ -285,6 +285,77 @@
             margin: 0;
         }
         .panel-sub { font-size: 0.78rem; color: var(--text-dim); }
+        .calendar-graph {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            padding: 16px 18px 12px;
+        }
+        .calendar-graph-scroll { overflow-x: auto; }
+        .calendar-graph svg { display: block; }
+        .calendar-graph .cal-label { fill: var(--text-dim); font-size: 10px; font-family: var(--font-sans); }
+        .calendar-graph .cal-empty { fill: var(--border); }
+        .calendar-graph .cal-zero { fill: var(--text-dim); opacity: 0.55; }
+        .calendar-graph .cal-up-1 { fill: rgba(59, 138, 138, 0.32); }
+        .calendar-graph .cal-up-2 { fill: rgba(59, 138, 138, 0.52); }
+        .calendar-graph .cal-up-3 { fill: rgba(59, 138, 138, 0.74); }
+        .calendar-graph .cal-up-4 { fill: rgba(59, 138, 138, 0.96); }
+        .calendar-graph .cal-down-1 { fill: rgba(244, 67, 54, 0.32); }
+        .calendar-graph .cal-down-2 { fill: rgba(244, 67, 54, 0.5); }
+        .calendar-graph .cal-down-3 { fill: rgba(244, 67, 54, 0.7); }
+        .calendar-graph .cal-down-4 { fill: rgba(244, 67, 54, 0.92); }
+        .calendar-graph-legend i.cal-empty { background: var(--border); }
+        .calendar-graph-legend i.cal-down-1 { background: rgba(244, 67, 54, 0.32); }
+        .calendar-graph-legend i.cal-down-2 { background: rgba(244, 67, 54, 0.5); }
+        .calendar-graph-legend i.cal-down-3 { background: rgba(244, 67, 54, 0.7); }
+        .calendar-graph-legend i.cal-down-4 { background: rgba(244, 67, 54, 0.92); }
+        .calendar-graph-legend i.cal-up-1 { background: rgba(59, 138, 138, 0.32); }
+        .calendar-graph-legend i.cal-up-2 { background: rgba(59, 138, 138, 0.52); }
+        .calendar-graph-legend i.cal-up-3 { background: rgba(59, 138, 138, 0.74); }
+        .calendar-graph-legend i.cal-up-4 { background: rgba(59, 138, 138, 0.96); }
+        .calendar-graph rect { rx: 2; ry: 2; }
+        .calendar-graph-foot {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px 16px;
+            margin-top: 12px;
+        }
+        .calendar-graph-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+        }
+        .calendar-graph-legend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: auto;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+        .calendar-graph-legend i {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            display: block;
+        }
+        .calendar-graph-tip {
+            position: fixed;
+            z-index: 80;
+            pointer-events: none;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.78rem;
+            line-height: 1.55;
+            font-family: var(--font-mono);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+        }
+        .calendar-graph-tip[hidden] { display: none; }
         .range-bar {
             display: flex;
             flex-wrap: wrap;
@@ -611,6 +682,33 @@
                     <canvas id="chart-range-pnl-pct"></canvas>
                 </div>
             </div>
+            <div class="panel-head" id="cal-head" style="margin-top: 28px;">
+                <span class="accent-line" aria-hidden="true"></span>
+                <h2 class="panel-title">当日盈亏</h2>
+                <span class="panel-sub">随上方时间范围变化 · 当日浮动盈亏 / 当日浮动盈亏%</span>
+            </div>
+            <div class="calendar-graph" id="calendar-graph">
+                <div class="calendar-graph-scroll">
+                    <svg id="calendar-graph-svg" role="img" aria-label="当日浮动盈亏日历"></svg>
+                </div>
+                <div class="calendar-graph-foot">
+                    <span class="calendar-graph-meta" id="calendar-graph-meta">—</span>
+                    <div class="calendar-graph-legend" aria-hidden="true">
+                        <span>亏损</span>
+                        <i class="cal-down-4"></i>
+                        <i class="cal-down-3"></i>
+                        <i class="cal-down-2"></i>
+                        <i class="cal-down-1"></i>
+                        <i class="cal-empty"></i>
+                        <i class="cal-up-1"></i>
+                        <i class="cal-up-2"></i>
+                        <i class="cal-up-3"></i>
+                        <i class="cal-up-4"></i>
+                        <span>盈利</span>
+                    </div>
+                </div>
+                <div class="calendar-graph-tip" id="calendar-graph-tip" hidden></div>
+            </div>
             <div class="panel-head" style="margin-top: 28px;">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 class="panel-title">分 ETF 持仓</h2>
@@ -890,6 +988,178 @@
                 if (!Number.isFinite(base)) base = cur;
                 return cur - base;
             });
+        }
+
+        function dailyChange(date, pick) {
+            const idx = allDates.indexOf(date);
+            if (idx <= 0) return NaN;
+            const cur = pick(accountByDate[date]);
+            const prev = pick(accountByDate[allDates[idx - 1]]);
+            return Number.isFinite(cur) && Number.isFinite(prev) ? cur - prev : NaN;
+        }
+
+        function parseYmd(s) {
+            const [y, m, d] = String(s).split('-').map(Number);
+            return new Date(y, (m || 1) - 1, d || 1);
+        }
+
+        function shiftDate(date, days) {
+            const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            next.setDate(next.getDate() + days);
+            return next;
+        }
+
+        function mondayOf(date) {
+            const day = date.getDay();
+            return shiftDate(date, day === 0 ? -6 : 1 - day);
+        }
+
+        function pnlLevel(value, maxAbs) {
+            if (!Number.isFinite(value) || value === 0 || !(maxAbs > 0)) return 0;
+            const ratio = Math.abs(value) / maxAbs;
+            if (ratio <= 0.25) return 1;
+            if (ratio <= 0.5) return 2;
+            if (ratio <= 0.75) return 3;
+            return 4;
+        }
+
+        function drawCalendar(rangeDates) {
+            const svg = document.getElementById('calendar-graph-svg');
+            const meta = document.getElementById('calendar-graph-meta');
+            if (!svg) return;
+            svg.replaceChildren();
+            const fromVal = document.getElementById('range-from').value;
+            const toVal = document.getElementById('range-to').value;
+            const startKey = fromVal || rangeDates[0] || '';
+            const endKey = toVal || rangeDates[rangeDates.length - 1] || '';
+            if (!startKey || !endKey || startKey > endKey) {
+                if (meta) meta.textContent = '该区间暂无快照';
+                return;
+            }
+            const byDate = {};
+            for (const d of allDates) {
+                if (d < startKey || d > endKey) continue;
+                byDate[d] = {
+                    pnl: dailyChange(d, (a) => a?.pnl),
+                    pct: dailyChange(d, (a) => a?.pnlPct)
+                };
+            }
+            let maxAbs = 0;
+            for (const row of Object.values(byDate)) {
+                if (Number.isFinite(row.pnl)) maxAbs = Math.max(maxAbs, Math.abs(row.pnl));
+            }
+            const start = mondayOf(parseYmd(startKey));
+            const end = parseYmd(endKey);
+            const weeks = [];
+            for (let cursor = start; cursor <= end; cursor = shiftDate(cursor, 7)) weeks.push(cursor);
+            const labelW = 28;
+            const monthH = 18;
+            const gap = 4;
+            const avail = Math.max(320, (svg.parentElement && svg.parentElement.clientWidth) || 640);
+            let cell = Math.floor((avail - labelW) / Math.max(weeks.length, 1)) - gap;
+            cell = Math.max(12, Math.min(22, cell));
+            const width = labelW + weeks.length * (cell + gap);
+            const height = monthH + 7 * (cell + gap);
+            const ns = 'http://www.w3.org/2000/svg';
+            const el = (name, attrs) => {
+                const node = document.createElementNS(ns, name);
+                for (const [key, val] of Object.entries(attrs)) node.setAttribute(key, String(val));
+                return node;
+            };
+            svg.setAttribute('width', String(width));
+            svg.setAttribute('height', String(height));
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+            svg.style.width = width + 'px';
+            svg.style.height = height + 'px';
+            ['一', '三', '五'].forEach((label, i) => {
+                const text = el('text', {
+                    x: 0,
+                    y: monthH + (i * 2 + 1) * (cell + gap) - 2,
+                    class: 'cal-label'
+                });
+                text.textContent = label;
+                svg.appendChild(text);
+            });
+            let labeledMonth = -1;
+            weeks.forEach((week, wi) => {
+                let labelDay = null;
+                for (let di = 0; di < 7; di++) {
+                    const day = shiftDate(week, di);
+                    const key = ymd(day);
+                    if (key < startKey || key > endKey) continue;
+                    if (day.getMonth() !== labeledMonth) {
+                        labelDay = day;
+                        break;
+                    }
+                }
+                if (labelDay) {
+                    labeledMonth = labelDay.getMonth();
+                    const text = el('text', {
+                        x: labelW + wi * (cell + gap),
+                        y: 12,
+                        class: 'cal-label'
+                    });
+                    text.textContent = (labeledMonth + 1) + '月';
+                    svg.appendChild(text);
+                }
+                for (let di = 0; di < 7; di++) {
+                    const day = shiftDate(week, di);
+                    const key = ymd(day);
+                    if (key < startKey || key > endKey) continue;
+                    const x = labelW + wi * (cell + gap);
+                    const y = monthH + di * (cell + gap);
+                    const row = byDate[key];
+                    const rect = el('rect', { x, y, width: cell, height: cell, rx: 2, ry: 2 });
+                    if (!row || !Number.isFinite(row.pnl)) {
+                        rect.setAttribute('class', 'cal-empty');
+                    } else {
+                        const level = pnlLevel(row.pnl, maxAbs);
+                        const side = row.pnl > 0 ? 'up' : (row.pnl < 0 ? 'down' : 'zero');
+                        rect.setAttribute('class', side === 'zero' ? 'cal-zero' : `cal-${side}-${level}`);
+                        rect.dataset.date = key;
+                        rect.dataset.pnl = String(row.pnl);
+                        rect.dataset.pct = String(row.pct);
+                    }
+                    svg.appendChild(rect);
+                }
+            });
+            const last = [...rangeDates].reverse().find((d) => Number.isFinite(byDate[d]?.pnl));
+            if (meta) {
+                if (!last) meta.textContent = '该区间暂无较前一交易日的盈亏';
+                else {
+                    const row = byDate[last];
+                    const pct = Number.isFinite(row.pct) ? row.pct.toFixed(2) + '%' : '—';
+                    meta.textContent = last + '  当日浮动盈亏 ' + yen(row.pnl) + '  ·  ' + pct;
+                }
+            }
+        }
+
+        function bindCalendar() {
+            const svg = document.getElementById('calendar-graph-svg');
+            const tip = document.getElementById('calendar-graph-tip');
+            if (!svg || !tip) return;
+            const hide = () => { tip.hidden = true; };
+            svg.addEventListener('pointermove', (e) => {
+                const cell = e.target.closest && e.target.closest('rect[data-date]');
+                if (!cell) { hide(); return; }
+                const pnl = Number(cell.dataset.pnl);
+                const pct = Number(cell.dataset.pct);
+                const pctText = Number.isFinite(pct) ? pct.toFixed(2) + '%' : '—';
+                tip.innerHTML = cell.dataset.date
+                    + '<br>当日浮动盈亏 ' + yen(pnl)
+                    + '<br>当日浮动盈亏% ' + pctText;
+                tip.hidden = false;
+                const pad = 12;
+                const w = tip.offsetWidth;
+                const h = tip.offsetHeight;
+                let left = e.clientX + pad;
+                let top = e.clientY + pad;
+                if (left + w > window.innerWidth - 8) left = e.clientX - w - pad;
+                if (top + h > window.innerHeight - 8) top = e.clientY - h - pad;
+                tip.style.left = left + 'px';
+                tip.style.top = top + 'px';
+            });
+            svg.addEventListener('pointerleave', hide);
         }
 
         function registerOriginFillVsPlugin() {
@@ -1276,6 +1546,7 @@
                     tick: yenTick
                 });
             });
+            drawCalendar(rangeDates);
             redrawFsChart();
         }
 
@@ -1346,6 +1617,7 @@
             bindThemeToggle();
             bindJumpDialog();
             bindChartFs();
+            bindCalendar();
             const onEtfJump = (e) => {
                 const jump = e.target.closest('.etf-jump');
                 if (!jump) return;
@@ -1390,11 +1662,15 @@
             const summary = document.getElementById('summary-grid');
             const rangeGrid = document.getElementById('range-grid');
             const rangeHead = document.getElementById('range-head');
+            const calHead = document.getElementById('cal-head');
+            const cal = document.getElementById('calendar-graph');
             if (!dates.length) {
                 empty.hidden = false;
                 summary.hidden = true;
                 if (rangeGrid) rangeGrid.hidden = true;
                 if (rangeHead) rangeHead.hidden = true;
+                if (calHead) calHead.hidden = true;
+                if (cal) cal.hidden = true;
                 document.getElementById('nav-days').textContent = '0';
                 return;
             }
@@ -1448,6 +1724,8 @@
                 return;
             }
             empty.hidden = true;
+            if (calHead) calHead.hidden = false;
+            if (cal) cal.hidden = false;
             buildGrid();
             setRange('month');
             let lastTier = screenTier();
