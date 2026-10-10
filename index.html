@@ -455,7 +455,28 @@
         @media (max-width: 1100px) {
             .charts-grid { grid-template-columns: 1fr; }
             .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-            .col-id { display: none; }
+            .col-id,
+            .col-code { display: none; }
+            .panel-table thead th.col-name,
+            .panel-table tbody td.col-name {
+                width: 1%;
+                white-space: nowrap;
+            }
+            .panel-table thead th.col-name {
+                position: sticky;
+                left: 0;
+                z-index: 2;
+                background: var(--bg-secondary);
+            }
+            .panel-table tbody td.col-name {
+                position: sticky;
+                left: 0;
+                z-index: 1;
+                background: var(--bg-card);
+            }
+            .panel-table tbody tr:hover td.col-name {
+                background: var(--bg-secondary);
+            }
             .panel-table { min-width: 820px; }
         }
         @media (max-width: 1024px) {
@@ -599,7 +620,7 @@
                         <tr>
                             <th data-sort="id" class="col-id">序号</th>
                             <th data-sort="code" class="col-code">代码</th>
-                            <th data-sort="name">名称</th>
+                            <th data-sort="name" class="col-name">名称</th>
                             <th data-sort="amount">持仓</th>
                             <th data-sort="price">现价</th>
                             <th data-sort="market_value">市值¥</th>
@@ -923,7 +944,7 @@
                 tr.innerHTML = `
                     <td class="mono col-id">${r.id}</td>
                     <td class="col-code"><button type="button" class="etf-copy mono" data-code="${escapeHtml(r.code)}" title="点击复制代码"><strong>${escapeHtml(r.code)}</strong></button></td>
-                    <td><button type="button" class="etf-link etf-jump" data-code="${escapeHtml(r.code)}" data-label="${escapeHtml(label)}" title="选择打开英为财情或雪球">${escapeHtml(label)}</button></td>
+                    <td class="col-name"><button type="button" class="etf-link etf-jump" data-code="${escapeHtml(r.code)}" data-label="${escapeHtml(label)}" title="选择打开英为财情或雪球">${escapeHtml(label)}</button></td>
                     <td class="mono">${formatGrouped(r.amount, 0)}</td>
                     <td class="mono">${r.price.toFixed(3)}</td>
                     <td class="mono">${money(r.market_value)}</td>
