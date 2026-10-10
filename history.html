@@ -292,7 +292,12 @@
             padding: 16px 18px 12px;
         }
         .calendar-graph-scroll { overflow-x: auto; }
-        .calendar-graph svg { display: block; }
+        .calendar-graph svg { display: block; touch-action: manipulation; }
+        .calendar-graph rect[data-date] { cursor: pointer; }
+        .calendar-graph rect.cal-active {
+            stroke: var(--text-primary);
+            stroke-width: 1.5px;
+        }
         .calendar-graph .cal-label { fill: var(--text-dim); font-size: 10px; font-family: var(--font-sans); }
         .calendar-graph .cal-empty { fill: var(--border); }
         .calendar-graph .cal-zero { fill: var(--text-dim); opacity: 0.55; }
@@ -1056,8 +1061,9 @@
             const monthH = 18;
             const gap = 4;
             const avail = Math.max(320, (svg.parentElement && svg.parentElement.clientWidth) || 640);
+            const coarse = window.matchMedia('(pointer: coarse)').matches;
             let cell = Math.floor((avail - labelW) / Math.max(weeks.length, 1)) - gap;
-            cell = Math.max(12, Math.min(22, cell));
+            cell = Math.max(coarse ? 18 : 12, Math.min(coarse ? 28 : 22, cell));
             const width = labelW + weeks.length * (cell + gap);
             const height = monthH + 7 * (cell + gap);
             const ns = 'http://www.w3.org/2000/svg';
@@ -1137,29 +1143,76 @@
         function bindCalendar() {
             const svg = document.getElementById('calendar-graph-svg');
             const tip = document.getElementById('calendar-graph-tip');
+            const scroller = svg && svg.closest('.calendar-graph-scroll');
             if (!svg || !tip) return;
-            const hide = () => { tip.hidden = true; };
-            svg.addEventListener('pointermove', (e) => {
-                const cell = e.target.closest && e.target.closest('rect[data-date]');
-                if (!cell) { hide(); return; }
+            let touchX = 0;
+            let touchY = 0;
+            let touching = false;
+            const clearActive = () => {
+                svg.querySelectorAll('rect.cal-active').forEach((node) => node.classList.remove('cal-active'));
+            };
+            const hide = () => {
+                tip.hidden = true;
+                clearActive();
+            };
+            const fillTip = (cell) => {
                 const pnl = Number(cell.dataset.pnl);
                 const pct = Number(cell.dataset.pct);
                 const pctText = Number.isFinite(pct) ? pct.toFixed(2) + '%' : '—';
                 tip.innerHTML = cell.dataset.date
                     + '<br>当日浮动盈亏 ' + yen(pnl)
                     + '<br>当日浮动盈亏% ' + pctText;
+            };
+            const placeTip = (cell, event) => {
+                clearActive();
+                cell.classList.add('cal-active');
+                fillTip(cell);
                 tip.hidden = false;
-                const pad = 12;
+                const box = cell.getBoundingClientRect();
                 const w = tip.offsetWidth;
                 const h = tip.offsetHeight;
-                let left = e.clientX + pad;
-                let top = e.clientY + pad;
-                if (left + w > window.innerWidth - 8) left = e.clientX - w - pad;
-                if (top + h > window.innerHeight - 8) top = e.clientY - h - pad;
+                let left = event ? event.clientX + 12 : box.left + box.width / 2 - w / 2;
+                let top = event ? event.clientY + 12 : box.top - h - 10;
+                if (left + w > window.innerWidth - 8) left = window.innerWidth - w - 8;
+                if (left < 8) left = 8;
+                if (top + h > window.innerHeight - 8) top = event ? event.clientY - h - 12 : box.top - h - 10;
+                if (top < 8) top = box.bottom + 10;
                 tip.style.left = left + 'px';
                 tip.style.top = top + 'px';
+            };
+            svg.addEventListener('pointermove', (e) => {
+                if (e.pointerType && e.pointerType !== 'mouse') return;
+                const cell = e.target.closest && e.target.closest('rect[data-date]');
+                if (!cell) { hide(); return; }
+                placeTip(cell, e);
             });
-            svg.addEventListener('pointerleave', hide);
+            svg.addEventListener('pointerleave', (e) => {
+                if (e.pointerType && e.pointerType !== 'mouse') return;
+                hide();
+            });
+            svg.addEventListener('pointerdown', (e) => {
+                if (!e.pointerType || e.pointerType === 'mouse') return;
+                touching = true;
+                touchX = e.clientX;
+                touchY = e.clientY;
+            });
+            svg.addEventListener('pointerup', (e) => {
+                if (!touching || (e.pointerType && e.pointerType === 'mouse')) return;
+                touching = false;
+                const dx = e.clientX - touchX;
+                const dy = e.clientY - touchY;
+                if (dx * dx + dy * dy > 64) return;
+                const hit = document.elementFromPoint(e.clientX, e.clientY);
+                const cell = hit && hit.closest && hit.closest('rect[data-date]');
+                if (!cell || !svg.contains(cell)) { hide(); return; }
+                placeTip(cell, null);
+            });
+            svg.addEventListener('pointercancel', () => { touching = false; });
+            document.addEventListener('pointerdown', (e) => {
+                if (e.target.closest && e.target.closest('#calendar-graph')) return;
+                hide();
+            });
+            if (scroller) scroller.addEventListener('scroll', hide, { passive: true });
         }
 
         function registerOriginFillVsPlugin() {
