@@ -189,6 +189,22 @@
             color: var(--text-primary);
             line-height: 1.25;
         }
+        .stat-card .value.is-toggle {
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        .stat-card .value.is-toggle:hover { opacity: 0.82; }
+        .stat-card .value.is-toggle:focus-visible {
+            outline: 2px solid var(--gold);
+            outline-offset: 3px;
+        }
+        .stat-card .value.is-cn {
+            font-family: var(--font-sans);
+            font-size: 0.98rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            line-height: 1.45;
+        }
         .stat-card.stat-card--accent .value { color: var(--gold); }
         .stat-card .label { font-size: 0.78rem; color: var(--text-secondary); }
         .charts-grid {
@@ -554,27 +570,27 @@
             <div class="metrics-grid">
                 <div class="stat-card stat-card--accent">
                     <h3>总资产¥</h3>
-                    <div class="value mono" id="m-total">—</div>
+                    <div class="value mono is-toggle" id="m-total" role="button" tabindex="0" aria-pressed="false">—</div>
                     <div class="label">账户</div>
                 </div>
                 <div class="stat-card">
                     <h3>总市值¥</h3>
-                    <div class="value mono" id="m-value">—</div>
+                    <div class="value mono is-toggle" id="m-value" role="button" tabindex="0" aria-pressed="false">—</div>
                     <div class="label">持仓市值</div>
                 </div>
                 <div class="stat-card">
                     <h3>浮动盈亏¥</h3>
-                    <div class="value mono" id="m-pnl">—</div>
+                    <div class="value mono is-toggle" id="m-pnl" role="button" tabindex="0" aria-pressed="false">—</div>
                     <div class="label">账户合计</div>
                 </div>
                 <div class="stat-card">
-                    <h3>浮动盈亏%</h3>
+                    <h3>浮动盈亏</h3>
                     <div class="value mono" id="m-pnl-pct">—</div>
                     <div class="label">浮动盈亏 ÷ 成本合计</div>
                 </div>
                 <div class="stat-card">
                     <h3>可用资金¥</h3>
-                    <div class="value mono" id="m-cash">—</div>
+                    <div class="value mono is-toggle" id="m-cash" role="button" tabindex="0" aria-pressed="false">—</div>
                     <div class="label">现金</div>
                 </div>
                 <div class="stat-card">
@@ -584,7 +600,7 @@
                 </div>
                 <div class="stat-card">
                     <h3>成本合计¥</h3>
-                    <div class="value mono" id="m-cost">—</div>
+                    <div class="value mono is-toggle" id="m-cost" role="button" tabindex="0" aria-pressed="false">—</div>
                     <div class="label">持仓×成本</div>
                 </div>
             </div>
@@ -879,6 +895,95 @@
             if (!Number.isFinite(n)) return '—';
             return formatGrouped(n, 2);
         }
+
+        function moneyCn(n) {
+            if (!Number.isFinite(n)) return '—';
+            const neg = n < 0;
+            const cents = Math.round(Math.abs(n) * 100);
+            if (cents === 0) return '零元整';
+            const digit = '零壹贰叁肆伍陆柒捌玖';
+            const small = ['', '拾', '佰', '仟'];
+            const big = ['', '万', '亿', '兆'];
+            const yuan = Math.floor(cents / 100);
+            const jiao = Math.floor(cents / 10) % 10;
+            const fen = cents % 10;
+            let intStr = '';
+            if (yuan > 0) {
+                const groups = [];
+                let x = yuan;
+                while (x > 0) {
+                    groups.push(x % 10000);
+                    x = Math.floor(x / 10000);
+                }
+                let pendingZero = false;
+                for (let i = groups.length - 1; i >= 0; i--) {
+                    const g = groups[i];
+                    if (g === 0) {
+                        if (intStr) pendingZero = true;
+                        continue;
+                    }
+                    const ds = String(g).padStart(4, '0');
+                    let part = '';
+                    let z = false;
+                    for (let k = 0; k < 4; k++) {
+                        const d = ds.charCodeAt(k) - 48;
+                        if (d === 0) {
+                            if (part) z = true;
+                        } else {
+                            if (z) { part += '零'; z = false; }
+                            part += digit[d] + small[3 - k];
+                        }
+                    }
+                    if (intStr && (pendingZero || g < 1000)) part = '零' + part;
+                    intStr += part + (big[i] || '');
+                    pendingZero = g % 10 === 0;
+                }
+            }
+            let s = yuan > 0 ? intStr + '元' : '';
+            if (jiao === 0 && fen === 0) s += '整';
+            else if (fen === 0) s += digit[jiao] + '角整';
+            else if (jiao === 0) s += (yuan > 0 ? '零' : '') + digit[fen] + '分';
+            else s += digit[jiao] + '角' + digit[fen] + '分';
+            return (neg ? '负' : '') + s;
+        }
+
+        const MONEY_CN_IDS = ['m-total', 'm-value', 'm-pnl', 'm-cash', 'm-cost'];
+
+        function renderMoneyEl(el) {
+            const n = el.dataset.amount === undefined || el.dataset.amount === '' ? NaN : Number(el.dataset.amount);
+            const cn = el.dataset.cn === '1' && Number.isFinite(n);
+            el.textContent = cn ? moneyCn(n) : (Number.isFinite(n) ? money(n) : '—');
+            el.classList.toggle('is-cn', cn);
+            el.setAttribute('aria-pressed', cn ? 'true' : 'false');
+            el.title = Number.isFinite(n) ? (cn ? '点击切换为数字' : '点击切换为中文大写') : '';
+        }
+
+        function setMoneyEl(id, n) {
+            const el = document.getElementById(id);
+            if (!el) return el;
+            const v = Number(n);
+            el.dataset.amount = Number.isFinite(v) ? String(v) : '';
+            renderMoneyEl(el);
+            return el;
+        }
+
+        function bindMoneyCnToggle() {
+            MONEY_CN_IDS.forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const toggle = () => {
+                    if (el.dataset.amount === undefined || el.dataset.amount === '') return;
+                    el.dataset.cn = el.dataset.cn === '1' ? '0' : '1';
+                    renderMoneyEl(el);
+                };
+                el.addEventListener('click', toggle);
+                el.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    toggle();
+                });
+            });
+        }
         const pct = (n, d = 1) => Number.isFinite(n) ? n.toFixed(d) + '%' : '—';
         const pctNum = (n, d = 2) => Number.isFinite(n) ? n.toFixed(d) : '—';
 
@@ -992,24 +1097,23 @@
         function applySummary(payload, costSum, n) {
             document.getElementById('nav-fetched').textContent = payload.fetched_at || payload.date || '—';
             document.getElementById('nav-count').textContent = String(n);
-            document.getElementById('m-total').textContent = money(payload.total);
-            document.getElementById('m-value').textContent = money(payload.total_value);
-            const pnlEl = document.getElementById('m-pnl');
+            setMoneyEl('m-total', payload.total);
+            setMoneyEl('m-value', payload.total_value);
             const pnl = Number(payload.float_profit);
-            pnlEl.textContent = money(pnl);
+            const pnlEl = setMoneyEl('m-pnl', pnl);
             pnlEl.classList.remove('pct-up', 'pct-down-num');
             if (Number.isFinite(pnl) && pnl !== 0) {
                 pnlEl.classList.add(pnl > 0 ? 'pct-up' : 'pct-down-num');
             }
-            document.getElementById('m-cash').textContent = money(payload.available);
+            setMoneyEl('m-cash', payload.available);
             const assets = Number(payload.total);
             const mkt = Number(payload.total_value);
             const allPos = assets > 0 && Number.isFinite(mkt) ? (mkt / assets) * 100 : NaN;
             document.getElementById('m-pos').textContent = pct(allPos);
-            document.getElementById('m-cost').textContent = money(costSum);
+            setMoneyEl('m-cost', costSum);
             const pnlPctEl = document.getElementById('m-pnl-pct');
             const pnlPctVal = costSum > 0 && Number.isFinite(pnl) ? (pnl / costSum) * 100 : NaN;
-            pnlPctEl.textContent = pctNum(pnlPctVal, 2);
+            pnlPctEl.textContent = pct(pnlPctVal, 2);
             pnlPctEl.classList.remove('pct-up', 'pct-down-num');
             const cls = pnlClass(pnlPctVal);
             if (cls) pnlPctEl.classList.add(cls);
@@ -1035,7 +1139,7 @@
                                 `持仓占比 ${weight.toFixed(2)}%`,
                                 `持仓金额¥ ${money(r.market_value)}`,
                                 `浮动盈亏¥ ${money(r.pnl)}`,
-                                `浮动盈亏% ${pctNum(r.pnl_pct, 2)}`
+                                `浮动盈亏 ${pctNum(r.pnl_pct, 2)}%`
                             ];
                         }
                     }
@@ -1259,6 +1363,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             bindGate();
             applyChartDefaults();
+            bindMoneyCnToggle();
             bindNumToggle();
             bindThemeToggle();
             bindJumpDialog();
