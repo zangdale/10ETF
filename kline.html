@@ -34,6 +34,10 @@
             --gold: #c9a84c;
             --gold-dim: rgba(201, 168, 76, 0.15);
             --teal: #3b8a8a;
+            --good: #4caf50;
+            --bad: #f44336;
+            --market-up: var(--bad);
+            --market-down: var(--good);
             --text-primary: #e8edf5;
             --text-secondary: #8896ab;
             --text-dim: #5a6678;
@@ -316,9 +320,9 @@
         }
         .info-table {
             width: 100%;
-            min-width: 520px;
             border-collapse: collapse;
             font-size: 0.82rem;
+            table-layout: fixed;
         }
         .info-table th {
             background: var(--bg-secondary);
@@ -330,36 +334,88 @@
             padding: 10px 12px;
             text-align: left;
             border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .info-table th:nth-child(1),
+        .info-table td:nth-child(1) { width: 5.5rem; }
+        .info-table th:nth-child(2),
+        .info-table td:nth-child(2) { width: 5.5rem; }
+        .info-table th:nth-child(3),
+        .info-table td:nth-child(3) {
+            width: auto;
+            padding-right: 8px;
         }
         .info-table th.num,
-        .info-table td.num { text-align: right; }
+        .info-table td.num {
+            width: 6.5rem;
+            text-align: left;
+            padding-left: 8px;
+        }
+        .info-table .th-sort {
+            appearance: none;
+            background: none;
+            border: 0;
+            padding: 0 16px 0 0;
+            margin: 0;
+            color: inherit;
+            font: inherit;
+            letter-spacing: inherit;
+            text-transform: inherit;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            white-space: nowrap;
+        }
+        .info-table .th-sort:hover { color: var(--gold); }
+        .info-table .th-sort.sort-asc::after,
+        .info-table .th-sort.sort-desc::after {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            color: var(--gold);
+        }
+        .info-table .th-sort.sort-asc::after { content: "↑"; }
+        .info-table .th-sort.sort-desc::after { content: "↓"; }
         .info-table td {
             padding: 10px 12px;
             border-bottom: 1px solid var(--border);
             color: var(--text-primary);
+            white-space: nowrap;
         }
         .info-table tbody tr:last-child td { border-bottom: none; }
-        .info-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .info-table .num { font-variant-numeric: tabular-nums; }
+        .pct-up { color: var(--market-up); font-weight: 600; }
+        .pct-down-num { color: var(--market-down); font-weight: 600; }
         .wk52 {
-            min-width: 280px;
             width: 100%;
+            min-width: 0;
             display: flex;
             flex-direction: column;
             align-items: stretch;
             gap: 4px;
         }
         .wk52-meta {
-            display: flex;
+            display: grid;
+            grid-template-columns: 7.4ch minmax(72px, 1fr) 7.4ch;
             align-items: center;
-            gap: 10px;
+            column-gap: 10px;
             font-family: var(--font-mono);
             font-size: 0.7rem;
+            font-variant-numeric: tabular-nums;
             color: var(--text-dim);
+        }
+        .wk52-lo,
+        .wk52-hi {
+            overflow: hidden;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
         }
         .wk52-track {
             position: relative;
-            flex: 1;
-            min-width: 72px;
+            min-width: 0;
+            width: 100%;
             height: 8px;
             border-radius: 99px;
             background: var(--border);
@@ -577,7 +633,8 @@
                         <tr>
                             <th>代码</th>
                             <th>名称</th>
-                            <th>52周范围</th>
+                            <th><button type="button" class="th-sort" data-sort="week52" aria-sort="none">52周范围</button></th>
+                            <th class="num"><button type="button" class="th-sort" data-sort="ytd" aria-sort="none">今年涨幅%</button></th>
                         </tr>
                     </thead>
                     <tbody id="info-body"></tbody>
@@ -653,6 +710,8 @@
         let holdNames = {};
         let barsByCode = {};
         let week52ByCode = {};
+        let tableSortKey = '';
+        let tableSortDir = '';
         let activeRange = 'year';
         let loading = false;
         const charts = {};
@@ -1076,12 +1135,47 @@
             return ymd(d);
         }
 
+        function ytdPct(bars) {
+            if (!Array.isArray(bars) || !bars.length) return NaN;
+            const last = bars[bars.length - 1];
+            const end = String(last.date || '');
+            const year = end.slice(0, 4);
+            if (!/^\d{4}$/.test(year)) return NaN;
+            const start = `${year}-01-01`;
+            const close = Number(last.close);
+            if (!(close > 0)) return NaN;
+            let base = NaN;
+            for (let i = bars.length - 1; i >= 0; i--) {
+                const d = String(bars[i].date || '');
+                if (d < start) {
+                    const c = Number(bars[i].close);
+                    if (c > 0) base = c;
+                    break;
+                }
+            }
+            if (!(base > 0)) {
+                for (const b of bars) {
+                    const d = String(b.date || '');
+                    if (d >= start && d < end) {
+                        const c = Number(b.close);
+                        if (c > 0) {
+                            base = c;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!(base > 0)) return NaN;
+            return ((close - base) / base) * 100;
+        }
+
         function week52Stats(bars) {
-            if (!Array.isArray(bars) || !bars.length) return null;
+            const ytd = ytdPct(bars);
+            if (!Array.isArray(bars) || !bars.length) return { ytd };
             const last = bars[bars.length - 1];
             const end = String(last.date || '');
             const from = addDaysYmd(end, -365);
-            const window = from ? bars.filter((b) => !from || String(b.date) >= from) : bars;
+            const window = from ? bars.filter((b) => String(b.date) >= from) : bars;
             const used = window.length ? window : bars;
             let lo = Infinity;
             let hi = -Infinity;
@@ -1095,10 +1189,10 @@
                 if (!Number.isFinite(high) && Number.isFinite(close)) hi = Math.max(hi, close);
             }
             const close = Number(last.close);
-            if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return null;
+            if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return { ytd };
             const span = hi - lo;
             const pos = span > 0 && Number.isFinite(close) ? (close - lo) / span : (Number.isFinite(close) ? 1 : NaN);
-            return { close, lo, hi, pos, from: used[0] && used[0].date, to: end, bars: used.length };
+            return { close, lo, hi, pos, ytd, from: used[0] && used[0].date, to: end, bars: used.length };
         }
 
         function week52Cell(stats) {
@@ -1111,36 +1205,108 @@
             return `
                 <div class="wk52" title="${escapeHtml(title)}">
                     <div class="wk52-meta">
-                        <span>${priceFmt(stats.lo)}</span>
+                        <span class="wk52-lo">${priceFmt(stats.lo)}</span>
                         <div class="wk52-track">
                             <div class="wk52-fill" style="width:${pct.toFixed(1)}%"></div>
                             <span class="wk52-mark" style="left:${pct.toFixed(1)}%"></span>
                         </div>
-                        <span>${priceFmt(stats.hi)}</span>
+                        <span class="wk52-hi">${priceFmt(stats.hi)}</span>
                     </div>
                     <span class="wk52-now">${priceFmt(stats.close)} (${pctText})</span>
                 </div>`;
         }
 
+        function pctCell(pct) {
+            if (!Number.isFinite(pct)) return '—';
+            const cls = pct > 0 ? 'pct-up' : (pct < 0 ? 'pct-down-num' : '');
+            return `<span class="${cls}">${pctFmt(pct)}</span>`;
+        }
+
+        function week52Value(code) {
+            const stats = week52ByCode[code];
+            const pos = stats && stats.pos;
+            if (!Number.isFinite(pos)) return NaN;
+            return Math.max(0, Math.min(100, pos * 100));
+        }
+
+        function ytdValue(code) {
+            const stats = week52ByCode[code];
+            const pct = stats && stats.ytd;
+            return Number.isFinite(pct) ? pct : NaN;
+        }
+
+        function sortValue(code) {
+            if (tableSortKey === 'week52') return week52Value(code);
+            if (tableSortKey === 'ytd') return ytdValue(code);
+            return NaN;
+        }
+
+        function sortedInfoItems() {
+            if (tableSortDir !== 'asc' && tableSortDir !== 'desc') return infoItems;
+            const dir = tableSortDir === 'asc' ? 1 : -1;
+            return [...infoItems].sort((a, b) => {
+                const av = sortValue(a.code);
+                const bv = sortValue(b.code);
+                const fa = Number.isFinite(av);
+                const fb = Number.isFinite(bv);
+                if (!fa && !fb) return 0;
+                if (!fa) return 1;
+                if (!fb) return -1;
+                return (av - bv) * dir;
+            });
+        }
+
+        function syncSortHeaders() {
+            document.querySelectorAll('.info-table .th-sort').forEach((btn) => {
+                btn.classList.remove('sort-asc', 'sort-desc');
+                const active = btn.dataset.sort === tableSortKey && (tableSortDir === 'asc' || tableSortDir === 'desc');
+                if (active) {
+                    btn.classList.add(`sort-${tableSortDir}`);
+                    btn.setAttribute('aria-sort', tableSortDir === 'asc' ? 'ascending' : 'descending');
+                } else {
+                    btn.setAttribute('aria-sort', 'none');
+                }
+            });
+        }
+
+        function sortInfo(key) {
+            if (tableSortKey === key) {
+                tableSortDir = tableSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                tableSortKey = key;
+                tableSortDir = 'asc';
+            }
+            renderInfoTable();
+        }
+
         function renderInfoTable() {
             const body = document.getElementById('info-body');
-            body.innerHTML = infoItems.map((row) => {
+            body.innerHTML = sortedInfoItems().map((row) => {
                 const stats = week52ByCode[row.code];
                 return `
                 <tr>
                     <td class="mono">${escapeHtml(row.code)}</td>
                     <td>${escapeHtml(displayName(row.code))}</td>
                     <td>${week52Cell(stats)}</td>
+                    <td class="num">${pctCell(ytdValue(row.code))}</td>
                 </tr>`;
             }).join('');
             document.getElementById('info-wrap').hidden = !infoItems.length;
+            syncSortHeaders();
+        }
+
+        function tableBarsFrom(end) {
+            const from52 = addDaysYmd(end, -365) || '';
+            const year = Number(String(end).slice(0, 4));
+            const fromYtd = Number.isFinite(year) ? `${year - 1}-12-01` : '';
+            if (from52 && fromYtd) return from52 < fromYtd ? from52 : fromYtd;
+            return from52 || fromYtd;
         }
 
         async function loadWeek52Table() {
             await Promise.all(infoItems.map(async (row) => {
                 const end = row.end || ymd(new Date());
-                const from = addDaysYmd(end, -365) || '';
-                const bars = await loadBarsForCode(row.code, from, end);
+                const bars = await loadBarsForCode(row.code, tableBarsFrom(end), end);
                 week52ByCode[row.code] = week52Stats(bars);
             }));
             renderInfoTable();
@@ -1194,6 +1360,10 @@
                 const jump = e.target.closest('.etf-jump');
                 if (!jump) return;
                 openJumpDialog(jump.dataset.code || '', jump.dataset.label || jump.textContent);
+            });
+
+            document.querySelectorAll('.info-table .th-sort').forEach((btn) => {
+                btn.addEventListener('click', () => sortInfo(btn.dataset.sort || ''));
             });
 
             document.querySelectorAll('.range-btn').forEach((btn) => {
