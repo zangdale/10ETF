@@ -41,6 +41,14 @@ make serve
 
 默认打开 `http://127.0.0.1:8080/index.html`，并**前台**运行 `serve.py`（Ctrl+C 结束）。若端口已被占用，会先结束占用进程再启动。换端口：`make serve PORT=9000`。不要用 `file://` 打开页面。
 
+## 雪球同屏
+
+```bash
+make desktop
+```
+
+在 `http://127.0.0.1:8765/` 把 `kline/info.json` 里的 10 只 ETF 雪球页裁到同一屏，只留主体（报价、走势、讨论）。换端口：`make desktop DESKTOP_PORT=8766`。页面里的「微调」可改上下左右偏移。
+
 ## 部署
 
 GitHub Actions 将根目录 `*.html`、`etf_hold.json`、`etf_hold/` 与 `kline/` 复制到 `dist/` 后部署 Cloudflare Pages（项目名示例：`10etf`）。

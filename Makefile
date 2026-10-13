@@ -1,6 +1,7 @@
-.PHONY: hold kline serve
+.PHONY: hold kline serve desktop
 
 PORT ?= 8080
+DESKTOP_PORT ?= 8765
 
 ifneq (,$(wildcard .env))
 include .env
@@ -45,3 +46,15 @@ serve:
 	fi
 	@(sleep 0.4 && python3 -c "import webbrowser; webbrowser.open('http://127.0.0.1:$(PORT)/index.html')") &
 	python3 serve.py $(PORT)
+
+# 本地同屏查看 10 只 ETF 的雪球主体（Ctrl+C 结束）
+desktop:
+	@echo "http://127.0.0.1:$(DESKTOP_PORT)/"
+	@pids=$$(lsof -nP -tiTCP:$(DESKTOP_PORT) -sTCP:LISTEN 2>/dev/null); \
+	if [ -n "$$pids" ]; then \
+		echo "端口 $(DESKTOP_PORT) 已被占用，结束进程 $$pids 后前台启动"; \
+		kill $$pids 2>/dev/null || true; \
+		sleep 0.3; \
+	fi
+	@(sleep 0.4 && python3 -c "import webbrowser; webbrowser.open('http://127.0.0.1:$(DESKTOP_PORT)/')") &
+	python3 desktop/server.py $(DESKTOP_PORT)
