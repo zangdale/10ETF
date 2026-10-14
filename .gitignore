@@ -26,3 +26,6 @@ etf_metrics.json
 # Logs
 *.log
 .env
+
+# 菜单栏应用包
+10ETF.app/

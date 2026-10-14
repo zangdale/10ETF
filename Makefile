@@ -1,7 +1,6 @@
-.PHONY: hold kline serve desktop
+.PHONY: hold kline serve tray tray-build
 
 PORT ?= 8080
-DESKTOP_PORT ?= 8765
 
 ifneq (,$(wildcard .env))
 include .env
@@ -47,14 +46,37 @@ serve:
 	@(sleep 0.4 && python3 -c "import webbrowser; webbrowser.open('http://127.0.0.1:$(PORT)/index.html')") &
 	python3 serve.py $(PORT)
 
-# 本地同屏查看 10 只 ETF 的雪球主体（Ctrl+C 结束）
-desktop:
-	@echo "http://127.0.0.1:$(DESKTOP_PORT)/"
-	@pids=$$(lsof -nP -tiTCP:$(DESKTOP_PORT) -sTCP:LISTEN 2>/dev/null); \
-	if [ -n "$$pids" ]; then \
-		echo "端口 $(DESKTOP_PORT) 已被占用，结束进程 $$pids 后前台启动"; \
-		kill $$pids 2>/dev/null || true; \
-		sleep 0.3; \
+# 菜单栏显示 10 只 ETF 今日涨幅（点击图标展开；Ctrl+C 结束）
+tray:
+	cd desktop/tray && CGO_ENABLED=1 go run .
+
+# 打包菜单栏程序为 10ETF.app（仅 macOS，不显示在程序坞）
+tray-build:
+	@if [ "$$(uname)" != "Darwin" ]; then \
+		echo "tray-build 仅支持 macOS"; \
+		exit 1; \
 	fi
-	@(sleep 0.4 && python3 -c "import webbrowser; webbrowser.open('http://127.0.0.1:$(DESKTOP_PORT)/')") &
-	python3 desktop/server.py $(DESKTOP_PORT)
+	rm -rf 10ETF.app
+	mkdir -p 10ETF.app/Contents/MacOS 10ETF.app/Contents/Resources/kline
+	cd desktop/tray && CGO_ENABLED=1 go build -ldflags "-s -w" -o ../../10ETF.app/Contents/MacOS/10ETF .
+	cp desktop/tray/Info.plist 10ETF.app/Contents/Info.plist
+	cp kline/info.json 10ETF.app/Contents/Resources/kline/info.json
+	@set -e; \
+	tmp=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	(cd desktop/tray && go run appicon.go "$$tmp/icon.png"); \
+	iconset="$$tmp/10ETF.iconset"; \
+	mkdir -p "$$iconset"; \
+	sips -z 16 16 "$$tmp/icon.png" --out "$$iconset/icon_16x16.png" >/dev/null; \
+	sips -z 32 32 "$$tmp/icon.png" --out "$$iconset/icon_16x16@2x.png" >/dev/null; \
+	sips -z 32 32 "$$tmp/icon.png" --out "$$iconset/icon_32x32.png" >/dev/null; \
+	sips -z 64 64 "$$tmp/icon.png" --out "$$iconset/icon_32x32@2x.png" >/dev/null; \
+	sips -z 128 128 "$$tmp/icon.png" --out "$$iconset/icon_128x128.png" >/dev/null; \
+	sips -z 256 256 "$$tmp/icon.png" --out "$$iconset/icon_128x128@2x.png" >/dev/null; \
+	sips -z 256 256 "$$tmp/icon.png" --out "$$iconset/icon_256x256.png" >/dev/null; \
+	sips -z 512 512 "$$tmp/icon.png" --out "$$iconset/icon_256x256@2x.png" >/dev/null; \
+	sips -z 512 512 "$$tmp/icon.png" --out "$$iconset/icon_512x512.png" >/dev/null; \
+	sips -z 1024 1024 "$$tmp/icon.png" --out "$$iconset/icon_512x512@2x.png" >/dev/null; \
+	iconutil -c icns "$$iconset" -o 10ETF.app/Contents/Resources/10ETF.icns
+	codesign --force --sign - 10ETF.app
+	@echo "已生成 10ETF.app"
