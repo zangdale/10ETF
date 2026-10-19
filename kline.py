@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""从 Tiingo 拉取持仓 ETF 日 K，按年写入 kline/yyyy/code.json。
-
-Tiingo 的 endDate 落后于其它标的时，用东财日 K 补齐缺失交易日（含中间空洞）。
-"""
+"""从东财拉取持仓 ETF 日 K，按年写入 kline/yyyy/code.json。"""
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 import urllib.error
@@ -23,6 +19,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 KLINE_DIR = ROOT / "kline"
 INFO_PATH = KLINE_DIR / "info.json"
+EASTMONEY_START = "1990-01-01"
 
 DEFAULT_CODES = [
     "159307",
@@ -40,20 +37,6 @@ DEFAULT_CODES = [
 NAME_OVERRIDES = {
     "515180": "中证红利",
 }
-
-
-def load_dotenv(path: Path) -> None:
-    if not path.is_file():
-        return
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, val = line.partition("=")
-        key = key.strip()
-        val = val.strip().strip("'").strip('"')
-        if key and key not in os.environ:
-            os.environ[key] = val
 
 
 def load_codes() -> list[str]:
@@ -120,72 +103,6 @@ def load_info_cache() -> dict[str, dict[str, Any]]:
     return out
 
 
-def tiingo_get(path: str, token: str, timeout: int = 30, retries: int = 5) -> Any:
-    url = f"https://api.tiingo.com{path}"
-    sep = "&" if "?" in path else "?"
-    url = f"{url}{sep}token={urllib.parse.quote(token, safe='')}"
-    req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
-    last_err: Exception | None = None
-    for attempt in range(retries):
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8", errors="replace"))
-        except urllib.error.HTTPError as e:
-            last_err = e
-            if e.code == 429 and attempt + 1 < retries:
-                wait = min(120.0, 15.0 * (attempt + 1))
-                print(f"  Tiingo 429，{wait:.0f}s 后重试 ({attempt + 1}/{retries})", file=sys.stderr, flush=True)
-                time.sleep(wait)
-                continue
-            raise
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as e:
-            last_err = e
-            if attempt + 1 < retries:
-                time.sleep(1.5 * (attempt + 1))
-                continue
-            raise
-    if last_err:
-        raise last_err
-    return None
-
-
-def fetch_meta(code: str, token: str) -> dict[str, Any]:
-    ticker = urllib.parse.quote(code.strip(), safe="")
-    payload = tiingo_get(f"/tiingo/daily/{ticker}", token)
-    return payload if isinstance(payload, dict) else {}
-
-
-def fetch_prices(code: str, token: str, start: str, end: str) -> list[dict[str, Any]]:
-    ticker = urllib.parse.quote(code.strip(), safe="")
-    q = urllib.parse.urlencode({"startDate": start, "endDate": end})
-    payload = tiingo_get(f"/tiingo/daily/{ticker}/prices?{q}", token)
-    return payload if isinstance(payload, list) else []
-
-
-def normalize_bar(row: dict[str, Any]) -> dict[str, Any] | None:
-    raw_date = str(row.get("date") or "").strip()
-    if not raw_date:
-        return None
-    day = raw_date[:10]
-    if len(day) != 10 or day[4] != "-" or day[7] != "-":
-        return None
-    bar = {
-        "date": day,
-        "open": row.get("open"),
-        "high": row.get("high"),
-        "low": row.get("low"),
-        "close": row.get("close"),
-        "volume": row.get("volume"),
-    }
-    if not any(isinstance(bar[k], (int, float)) for k in ("open", "high", "low", "close")):
-        return None
-    return bar
-
-
-def next_day(ymd: str) -> str:
-    return (date.fromisoformat(ymd) + timedelta(days=1)).isoformat()
-
-
 def shift_day(ymd: str, days: int) -> str:
     return (date.fromisoformat(ymd) + timedelta(days=days)).isoformat()
 
@@ -195,8 +112,8 @@ def eastmoney_secid(code: str) -> str:
     return f"{market}.{code}"
 
 
-def fetch_eastmoney_bars(code: str, start: str, end: str) -> list[dict[str, Any]]:
-    """东财日 K。成交量单位是手，换成股以便和 Tiingo 对齐。"""
+def fetch_eastmoney_bars(code: str, start: str, end: str, retries: int = 4) -> list[dict[str, Any]]:
+    """东财不复权日 K。成交量单位是手，乘 100 换成股。"""
     q = urllib.parse.urlencode(
         {
             "secid": eastmoney_secid(code),
@@ -210,9 +127,28 @@ def fetch_eastmoney_bars(code: str, start: str, end: str) -> list[dict[str, Any]
         }
     )
     url = f"https://push2his.eastmoney.com/api/qt/stock/kline/get?{q}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        payload = json.loads(resp.read().decode("utf-8", errors="replace"))
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Referer": "https://quote.eastmoney.com/",
+        },
+    )
+    last_err: Exception | None = None
+    payload: Any = None
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                payload = json.loads(resp.read().decode("utf-8", errors="replace"))
+            break
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as e:
+            last_err = e
+            if attempt + 1 < retries:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise
+    if payload is None and last_err:
+        raise last_err
     klines = (payload.get("data") or {}).get("klines") if isinstance(payload, dict) else None
     if not isinstance(klines, list):
         return []
@@ -239,47 +175,6 @@ def fetch_eastmoney_bars(code: str, start: str, end: str) -> list[dict[str, Any]
             continue
         bars.append(bar)
     return bars
-
-
-def supplement_missing(
-    code: str,
-    bars: list[dict[str, Any]],
-    peer_end: str | None,
-) -> list[dict[str, Any]]:
-    """Tiingo 停更时，按其它标的的最新交易日，从东财补上本地没有的 K 线。"""
-    if not bars or not peer_end:
-        return []
-    last = bars[-1]["date"]
-    if last >= peer_end:
-        return []
-    try:
-        remote = fetch_eastmoney_bars(code, shift_day(last, -15), peer_end)
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError, ValueError) as e:
-        print(f"  东财补齐失败：{e}", file=sys.stderr, flush=True)
-        return []
-    have = {str(bar.get("date") or "") for bar in bars}
-    return [bar for bar in remote if bar["date"] not in have and bar["date"] <= peer_end]
-
-
-def latest_peer_end(
-    code: str,
-    info_cache: dict[str, dict[str, Any]],
-    done_items: list[dict[str, Any]],
-) -> str | None:
-    ends: list[str] = []
-    for other, item in info_cache.items():
-        if other == code:
-            continue
-        end = str(item.get("end") or "").strip()
-        if end:
-            ends.append(end)
-    for item in done_items:
-        if str(item.get("code") or "") == code:
-            continue
-        end = str(item.get("end") or "").strip()
-        if end:
-            ends.append(end)
-    return max(ends) if ends else None
 
 
 def list_local_years(code: str) -> list[int]:
@@ -358,72 +253,46 @@ def summarize_bars(bars: list[dict[str, Any]]) -> tuple[str | None, str | None, 
 def sync_code(
     code: str,
     name: str,
-    token: str,
     cached: dict[str, Any] | None,
     *,
     full: bool,
-    peer_end: str | None = None,
+    today: str,
 ) -> tuple[dict[str, Any], str]:
-    meta = fetch_meta(code, token)
-    tiingo_start = str(meta.get("startDate") or "").strip()
-    tiingo_end = str(meta.get("endDate") or "").strip()
-    if not tiingo_start or not tiingo_end:
-        raise ValueError("Tiingo 无有效日期范围")
-
-    local_bars: list[dict[str, Any]] = []
     local_end = str(cached.get("end") or "").strip() if cached else ""
     has_local = bool(cached and cached.get("rows") and local_end)
 
     if full or not has_local:
         mode = "全量"
-        fetch_start = tiingo_start
-        local_bars = [] if full else load_local_bars(code, cached)
+        fetch_start = EASTMONEY_START
+        local_bars: list[dict[str, Any]] = []
     else:
         mode = "增量"
-        fetch_start = next_day(local_end)
+        fetch_start = shift_day(local_end, -15)
         local_bars = load_local_bars(code, cached)
 
-    fetched_new: list[dict[str, Any]] = []
-    if fetch_start > tiingo_end:
-        bars = local_bars
+    remote = fetch_eastmoney_bars(code, fetch_start, today)
+    remote = [bar for bar in remote if bar["date"] <= today]
+    if not remote and not local_bars:
+        raise ValueError("东财无日 K")
+
+    if full or not has_local:
+        bars = remote
+        new_bars = list(remote)
     else:
-        time.sleep(0.5)
-        rows = fetch_prices(code, token, fetch_start, tiingo_end)
-        fetched_new = [b for b in (normalize_bar(r) for r in rows) if b]
-        bars = merge_bars(local_bars + fetched_new)
+        have = {str(bar.get("date") or "") for bar in local_bars}
+        new_bars = [bar for bar in remote if bar["date"] not in have]
+        bars = merge_bars(local_bars + new_bars)
 
-    filled = supplement_missing(code, bars, peer_end)
-    if filled:
-        bars = merge_bars(bars + filled)
-
-    changed = fetched_new + filled
-    if changed:
+    if new_bars:
         by_year = split_by_year(bars)
-        years_to_write = {int(bar["date"][:4]) for bar in changed}
+        years_to_write = {int(bar["date"][:4]) for bar in new_bars}
         write_year_files(code, name, {year: by_year[year] for year in years_to_write})
 
     first, last, years, row_count = summarize_bars(bars)
-    if mode == "增量":
-        parts: list[str] = []
-        if fetched_new:
-            parts.append(
-                f"增量 +{len(fetched_new)} 条（{fetched_new[0]['date']} ~ {fetched_new[-1]['date']}）"
-            )
-        if filled:
-            parts.append(
-                f"东财补齐 +{len(filled)} 条（{filled[0]['date']} ~ {filled[-1]['date']}，Tiingo 至 {tiingo_end}）"
-            )
-        if parts:
-            detail = " · ".join(parts)
-        elif fetch_start > tiingo_end:
-            detail = f"{mode} · 已是最新（至 {last or tiingo_end}）"
-        else:
-            detail = f"增量 · 无新 K 线（Tiingo 至 {tiingo_end}）"
+    if new_bars:
+        detail = f"{mode} +{len(new_bars)} 条（{new_bars[0]['date']} ~ {new_bars[-1]['date']}）"
     else:
-        extra = ""
-        if filled:
-            extra = f" · 东财补齐 +{len(filled)} 条（{filled[0]['date']} ~ {filled[-1]['date']}）"
-        detail = f"全量 {row_count} 条 · {first} ~ {last} · {len(years)} 个年份文件{extra}"
+        detail = f"{mode} · 已是最新（至 {last or today}）"
 
     return (
         {
@@ -439,7 +308,7 @@ def sync_code(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="拉取 Tiingo 日 K 到 kline/")
+    parser = argparse.ArgumentParser(description="拉取东财日 K 到 kline/")
     parser.add_argument(
         "--full",
         action="store_true",
@@ -449,13 +318,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    load_dotenv(ROOT / ".env")
     args = parse_args()
-    token = os.environ.get("TIINGO_API_KEY", "").strip()
-    if not token:
-        print("未配置 TIINGO_API_KEY，请在 .env 中设置", file=sys.stderr)
-        return 1
-
+    today = date.today().isoformat()
     codes = load_codes()
     names = load_names()
     KLINE_DIR.mkdir(parents=True, exist_ok=True)
@@ -464,7 +328,7 @@ def main() -> int:
     if args.full:
         print("模式：全量", flush=True)
     else:
-        print("模式：增量（无本地数据时自动全量）", flush=True)
+        print(f"模式：增量（无本地数据时自动全量，截止 {today}）", flush=True)
 
     info_items: list[dict[str, Any]] = []
     for i, code in enumerate(codes):
@@ -474,10 +338,9 @@ def main() -> int:
             item, detail = sync_code(
                 code,
                 name,
-                token,
                 info_cache.get(code),
                 full=args.full,
-                peer_end=latest_peer_end(code, info_cache, info_items),
+                today=today,
             )
             info_items.append(item)
             print(f"  {detail}", flush=True)
@@ -501,11 +364,11 @@ def main() -> int:
                         "error": str(e),
                     }
                 )
-        time.sleep(2.5)
+        time.sleep(0.4)
 
     info = {
         "fetched_at": datetime.now().replace(microsecond=0).isoformat(sep=" "),
-        "source": "tiingo",
+        "source": "eastmoney",
         "mode": "full" if args.full else "incremental",
         "items": info_items,
     }

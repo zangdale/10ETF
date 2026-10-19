@@ -18,13 +18,13 @@ make hold
 
 ## 拉取日 K
 
-`.env` 中配置 `TIINGO_API_KEY` 后：
+从东财拉取，不需要 API key：
 
 ```bash
 make kline
 ```
 
-默认**增量**：读取 `kline/info.json` 与已有年份文件，只拉取本地 `end` 之后的新 K 线并合并；某只 ETF 无本地数据时自动全量。强制全量重拉：
+默认**增量**：读取 `kline/info.json` 与已有年份文件，只补本地 `end` 之后到今天的新 K 线；某只 ETF 无本地数据时自动全量。强制全量重拉：
 
 ```bash
 make kline FULL=1
