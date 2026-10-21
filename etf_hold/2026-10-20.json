@@ -118,10 +118,10 @@
       "available": 500,
       "cost": 140.22,
       "cost_value": 70110.0,
-      "price": 140.987,
-      "market_value": 70493.5,
-      "pnl": 383.5,
-      "pnl_pct": 0.55,
+      "price": 141.175,
+      "market_value": 70587.5,
+      "pnl": 477.57,
+      "pnl_pct": 0.681,
       "tiingo_name": "Guotai Asset Management Company Ltd"
     },
     {
@@ -131,10 +131,10 @@
       "available": 900,
       "cost": 113.518,
       "cost_value": 102166.2,
-      "price": 114.067,
-      "market_value": 102660.3,
-      "pnl": 494.1,
-      "pnl_pct": 0.48,
+      "price": 114.069,
+      "market_value": 102662.1,
+      "pnl": 496.1,
+      "pnl_pct": 0.486,
       "tiingo_name": "HFT Investment Management Co. Ltd."
     }
   ]
