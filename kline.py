@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""从东财拉取持仓 ETF 日 K，按年写入 kline/yyyy/code.json。"""
+"""拉取持仓 ETF 日 K，按年写入 kline/yyyy/code.json。
+
+优先东财；连接被对端直接断开时改用腾讯行情（不复权，成交量同样换算成股）。
+"""
 
 from __future__ import annotations
 
@@ -107,9 +110,18 @@ def shift_day(ymd: str, days: int) -> str:
     return (date.fromisoformat(ymd) + timedelta(days=days)).isoformat()
 
 
+def is_shanghai(code: str) -> bool:
+    return code.startswith(("5", "6", "9"))
+
+
 def eastmoney_secid(code: str) -> str:
-    market = "1" if code.startswith(("5", "6", "9")) else "0"
+    market = "1" if is_shanghai(code) else "0"
     return f"{market}.{code}"
+
+
+def qq_symbol(code: str) -> str:
+    prefix = "sh" if is_shanghai(code) else "sz"
+    return f"{prefix}{code}"
 
 
 def fetch_eastmoney_bars(code: str, start: str, end: str, retries: int = 4) -> list[dict[str, Any]]:
@@ -175,6 +187,85 @@ def fetch_eastmoney_bars(code: str, start: str, end: str, retries: int = 4) -> l
             continue
         bars.append(bar)
     return bars
+
+
+def fetch_qq_bars(code: str, start: str, end: str, retries: int = 3) -> list[dict[str, Any]]:
+    """腾讯不复权日 K。成交量单位是手，乘 100 换成股。单次最多约 2000 根，更早的往前翻页。"""
+    symbol = qq_symbol(code)
+    bars_by_date: dict[str, dict[str, Any]] = {}
+    page_end = end
+    for _page in range(30):
+        url = (
+            "https://web.ifzq.gtimg.cn/appstock/app/kline/kline?param="
+            f"{symbol},day,{start},{page_end},2000,"
+        )
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Referer": "https://gu.qq.com/",
+            },
+        )
+        payload: Any = None
+        last_err: Exception | None = None
+        for attempt in range(retries):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    payload = json.loads(resp.read().decode("utf-8", errors="replace"))
+                break
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as e:
+                last_err = e
+                if attempt + 1 < retries:
+                    time.sleep(0.6 * (attempt + 1))
+                    continue
+                raise
+        if payload is None and last_err:
+            raise last_err
+        node: Any = None
+        if isinstance(payload, dict):
+            data = payload.get("data")
+            if isinstance(data, dict):
+                node = data.get(symbol)
+        rows = node.get("day") if isinstance(node, dict) else None
+        if not isinstance(rows, list) or not rows:
+            break
+        earliest: str | None = None
+        for row in rows:
+            if not isinstance(row, (list, tuple)) or len(row) < 6:
+                continue
+            day = str(row[0]).strip()
+            if len(day) != 10 or day[4] != "-" or day[7] != "-" or day < start or day > end:
+                continue
+            if earliest is None or day < earliest:
+                earliest = day
+            try:
+                bar = {
+                    "date": day,
+                    "open": round(float(row[1]), 4),
+                    "high": round(float(row[3]), 4),
+                    "low": round(float(row[4]), 4),
+                    "close": round(float(row[2]), 4),
+                    "volume": int(round(float(row[5]) * 100)),
+                }
+            except ValueError:
+                continue
+            bars_by_date[day] = bar
+        if earliest is None or earliest <= start or len(rows) < 2000:
+            break
+        nxt = shift_day(earliest, -1)
+        if nxt >= page_end or nxt < start:
+            break
+        page_end = nxt
+        time.sleep(0.2)
+    return [bars_by_date[d] for d in sorted(bars_by_date)]
+
+
+def fetch_bars(code: str, start: str, end: str) -> tuple[list[dict[str, Any]], str]:
+    """优先东财。对端直接断开时改用腾讯，避免在已失效的地址上反复重试。"""
+    try:
+        return fetch_eastmoney_bars(code, start, end, retries=1), "eastmoney"
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return fetch_qq_bars(code, start, end), "tencent"
 
 
 def list_local_years(code: str) -> list[int]:
@@ -257,7 +348,7 @@ def sync_code(
     *,
     full: bool,
     today: str,
-) -> tuple[dict[str, Any], str]:
+) -> tuple[dict[str, Any], str, str]:
     local_end = str(cached.get("end") or "").strip() if cached else ""
     has_local = bool(cached and cached.get("rows") and local_end)
 
@@ -270,10 +361,10 @@ def sync_code(
         fetch_start = shift_day(local_end, -15)
         local_bars = load_local_bars(code, cached)
 
-    remote = fetch_eastmoney_bars(code, fetch_start, today)
+    remote, source = fetch_bars(code, fetch_start, today)
     remote = [bar for bar in remote if bar["date"] <= today]
     if not remote and not local_bars:
-        raise ValueError("东财无日 K")
+        raise ValueError("无日 K")
 
     if full or not has_local:
         bars = remote
@@ -289,10 +380,11 @@ def sync_code(
         write_year_files(code, name, {year: by_year[year] for year in years_to_write})
 
     first, last, years, row_count = summarize_bars(bars)
+    via = "" if source == "eastmoney" else " · 腾讯"
     if new_bars:
-        detail = f"{mode} +{len(new_bars)} 条（{new_bars[0]['date']} ~ {new_bars[-1]['date']}）"
+        detail = f"{mode} +{len(new_bars)} 条（{new_bars[0]['date']} ~ {new_bars[-1]['date']}）{via}"
     else:
-        detail = f"{mode} · 已是最新（至 {last or today}）"
+        detail = f"{mode} · 已是最新（至 {last or today}）{via}"
 
     return (
         {
@@ -304,11 +396,12 @@ def sync_code(
             "rows": row_count,
         },
         detail,
+        source,
     )
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="拉取东财日 K 到 kline/")
+    parser = argparse.ArgumentParser(description="拉取日 K 到 kline/")
     parser.add_argument(
         "--full",
         action="store_true",
@@ -331,17 +424,19 @@ def main() -> int:
         print(f"模式：增量（无本地数据时自动全量，截止 {today}）", flush=True)
 
     info_items: list[dict[str, Any]] = []
+    sources: set[str] = set()
     for i, code in enumerate(codes):
         name = names.get(code, code)
         print(f"[{i + 1}/{len(codes)}] {code} {name}", flush=True)
         try:
-            item, detail = sync_code(
+            item, detail, source = sync_code(
                 code,
                 name,
                 info_cache.get(code),
                 full=args.full,
                 today=today,
             )
+            sources.add(source)
             info_items.append(item)
             print(f"  {detail}", flush=True)
         except Exception as e:
@@ -368,7 +463,7 @@ def main() -> int:
 
     info = {
         "fetched_at": datetime.now().replace(microsecond=0).isoformat(sep=" "),
-        "source": "eastmoney",
+        "source": "+".join(sorted(sources)) if sources else "eastmoney",
         "mode": "full" if args.full else "incremental",
         "items": info_items,
     }

@@ -1,27 +1,26 @@
 {
-  "fetched_at": "2026-10-23 15:29:00",
-  "source": "eastmoney",
+  "fetched_at": "2026-10-23 15:42:26",
+  "source": "tencent",
   "mode": "incremental",
   "items": [
     {
       "code": "561580",
       "name": "央企红利",
       "start": "2023-05-30",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2023,
         2024,
         2025,
         2026
       ],
-      "rows": 825,
-      "error": "Remote end closed connection without response"
+      "rows": 826
     },
     {
       "code": "515180",
       "name": "中证红利",
       "start": "2019-12-20",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2019,
         2020,
@@ -32,64 +31,59 @@
         2025,
         2026
       ],
-      "rows": 1695,
-      "error": "Remote end closed connection without response"
+      "rows": 1696
     },
     {
       "code": "159307",
       "name": "100红利",
       "start": "2026-01-05",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2026
       ],
-      "rows": 153,
-      "error": "Remote end closed connection without response"
+      "rows": 154
     },
     {
       "code": "513870",
       "name": "纳指指数",
       "start": "2023-11-02",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2023,
         2024,
         2025,
         2026
       ],
-      "rows": 706,
-      "error": "Remote end closed connection without response"
+      "rows": 707
     },
     {
       "code": "513650",
       "name": "标普ETF",
       "start": "2023-04-04",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2023,
         2024,
         2025,
         2026
       ],
-      "rows": 865,
-      "error": "Remote end closed connection without response"
+      "rows": 866
     },
     {
       "code": "520870",
       "name": "巴西ETF",
       "start": "2026-01-05",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2026
       ],
-      "rows": 152,
-      "error": "Remote end closed connection without response"
+      "rows": 153
     },
     {
       "code": "159985",
       "name": "豆粕ETF",
       "start": "2019-12-05",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2019,
         2020,
@@ -100,14 +94,13 @@
         2025,
         2026
       ],
-      "rows": 1707,
-      "error": "Remote end closed connection without response"
+      "rows": 1708
     },
     {
       "code": "518680",
       "name": "金ETF",
       "start": "2020-07-28",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2020,
         2021,
@@ -117,14 +110,13 @@
         2025,
         2026
       ],
-      "rows": 1538,
-      "error": "Remote end closed connection without response"
+      "rows": 1539
     },
     {
       "code": "511010",
       "name": "国债ETF",
       "start": "2017-02-14",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2017,
         2018,
@@ -137,14 +129,13 @@
         2025,
         2026
       ],
-      "rows": 2438,
-      "error": "Remote end closed connection without response"
+      "rows": 2439
     },
     {
       "code": "511360",
       "name": "短融ETF",
       "start": "2020-09-25",
-      "end": "2026-10-22",
+      "end": "2026-10-23",
       "years": [
         2020,
         2021,
@@ -154,8 +145,7 @@
         2025,
         2026
       ],
-      "rows": 1495,
-      "error": "Remote end closed connection without response"
+      "rows": 1496
     }
   ]
 }
