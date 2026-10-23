@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-10-22 15:22:12",
+  "fetched_at": "2026-10-23 15:29:00",
   "source": "eastmoney",
   "mode": "incremental",
   "items": [
@@ -14,7 +14,8 @@
         2025,
         2026
       ],
-      "rows": 825
+      "rows": 825,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "515180",
@@ -31,7 +32,8 @@
         2025,
         2026
       ],
-      "rows": 1695
+      "rows": 1695,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "159307",
@@ -41,7 +43,8 @@
       "years": [
         2026
       ],
-      "rows": 153
+      "rows": 153,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "513870",
@@ -54,7 +57,8 @@
         2025,
         2026
       ],
-      "rows": 706
+      "rows": 706,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "513650",
@@ -67,7 +71,8 @@
         2025,
         2026
       ],
-      "rows": 865
+      "rows": 865,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "520870",
@@ -77,7 +82,8 @@
       "years": [
         2026
       ],
-      "rows": 152
+      "rows": 152,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "159985",
@@ -94,7 +100,8 @@
         2025,
         2026
       ],
-      "rows": 1707
+      "rows": 1707,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "518680",
@@ -110,7 +117,8 @@
         2025,
         2026
       ],
-      "rows": 1538
+      "rows": 1538,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "511010",
@@ -129,7 +137,8 @@
         2025,
         2026
       ],
-      "rows": 2438
+      "rows": 2438,
+      "error": "Remote end closed connection without response"
     },
     {
       "code": "511360",
@@ -145,7 +154,8 @@
         2025,
         2026
       ],
-      "rows": 1495
+      "rows": 1495,
+      "error": "Remote end closed connection without response"
     }
   ]
 }
