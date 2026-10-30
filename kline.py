@@ -3,12 +3,15 @@
 """拉取持仓 ETF 日 K，按年写入 kline/yyyy/code.json。
 
 优先东财；连接被对端直接断开时改用腾讯行情（不复权，成交量同样换算成股）。
+同时从天天基金拉取现金分红，记到对应年份日 K 的 dps 字段。
 """
 
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -22,6 +25,10 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 KLINE_DIR = ROOT / "kline"
 INFO_PATH = KLINE_DIR / "info.json"
+DPS_RE = re.compile(r"每\s*([0-9]+(?:\.[0-9]+)?)\s*份.*?([0-9]+(?:\.[0-9]+)?)\s*元")
+ROW_RE = re.compile(
+    r"<tr><td>([^<]*)</td><td>([^<]*)</td><td>([^<]*)</td><td>([^<]*)</td><td>([^<]*)</td></tr>"
+)
 EASTMONEY_START = "1990-01-01"
 
 DEFAULT_CODES = [
@@ -302,8 +309,13 @@ def merge_bars(bars: list[dict[str, Any]]) -> list[dict[str, Any]]:
     by_date: dict[str, dict[str, Any]] = {}
     for bar in bars:
         day = str(bar.get("date") or "").strip()
-        if day:
-            by_date[day] = bar
+        if not day:
+            continue
+        merged = dict(bar)
+        prev = by_date.get(day)
+        if prev and prev.get("dps") and not merged.get("dps"):
+            merged["dps"] = prev["dps"]
+        by_date[day] = merged
     return [by_date[d] for d in sorted(by_date)]
 
 
@@ -400,12 +412,124 @@ def sync_code(
     )
 
 
+def parse_dps(text: str) -> float | None:
+    """「每10份派现金0.6100元」→ 每股 0.061 元。"""
+    match = DPS_RE.search(text.replace(",", ""))
+    if not match:
+        return None
+    shares = float(match.group(1))
+    cash = float(match.group(2))
+    if shares <= 0 or cash < 0:
+        return None
+    return round(cash / shares, 6)
+
+
+def fetch_fund_dividends(code: str) -> list[dict[str, Any]]:
+    """天天基金分红送配。返回按除息日升序的现金分红，dps 为每股元。"""
+    url = f"https://fundf10.eastmoney.com/fhsp_{code}.html"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    table = None
+    last_err: Exception | None = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            last_err = e
+            time.sleep(0.8 * (attempt + 1))
+            continue
+        table = re.search(r"<table class='w782 comm cfxq'>(.*?)</table>", raw, re.S)
+        if table:
+            break
+        last_err = ValueError("分红页面无表格")
+        time.sleep(0.8 * (attempt + 1))
+    else:
+        raise last_err or ValueError("分红页面无表格")
+    assert table is not None
+    if "暂无分红" in table.group(1):
+        return []
+    by_date: dict[str, dict[str, Any]] = {}
+    for _year, record, ex_date, amount, pay in ROW_RE.findall(table.group(1)):
+        day = ex_date.strip() or pay.strip() or record.strip()
+        if len(day) != 10 or day[4] != "-" or day[7] != "-":
+            continue
+        dps = parse_dps(amount)
+        if dps is None or dps <= 0:
+            continue
+        prev = by_date.get(day)
+        event = {
+            "date": day,
+            "dps": dps if not prev else round(prev["dps"] + dps, 6),
+        }
+        record_day = record.strip()
+        pay_day = pay.strip()
+        if len(record_day) == 10:
+            event["record"] = record_day
+        if len(pay_day) == 10:
+            event["pay"] = pay_day
+        by_date[day] = event
+    return [by_date[d] for d in sorted(by_date)]
+
+
+def apply_dividends(code: str, name: str, events: list[dict[str, Any]]) -> int:
+    """把每股分红写进除息日当天的 K 线；当天无 K 线则记到之后首个交易日。"""
+    bars = load_local_bars(code, None)
+    if not bars:
+        return 0
+    changed_years: set[int] = set()
+    for bar in bars:
+        if "dps" in bar:
+            bar.pop("dps", None)
+            changed_years.add(int(str(bar["date"])[:4]))
+    dates = [str(bar["date"]) for bar in bars]
+    applied = 0
+    for event in events:
+        day = str(event.get("date") or "")
+        dps = event.get("dps")
+        if len(day) != 10 or not isinstance(dps, (int, float)) or dps <= 0:
+            continue
+        idx = bisect.bisect_left(dates, day)
+        if idx >= len(bars):
+            continue
+        bar_day = dates[idx]
+        lag = (date.fromisoformat(bar_day) - date.fromisoformat(day)).days
+        if lag > 10:
+            continue
+        bar = bars[idx]
+        bar["dps"] = round(float(bar.get("dps") or 0) + float(dps), 6)
+        changed_years.add(int(str(bar["date"])[:4]))
+        applied += 1
+    if changed_years:
+        by_year = split_by_year(bars)
+        write_year_files(code, name, {year: by_year[year] for year in changed_years if year in by_year})
+    return applied
+
+
+def sync_dividends(codes: list[str], names: dict[str, str]) -> None:
+    print("分红：写入各年日 K", flush=True)
+    for i, code in enumerate(codes):
+        name = names.get(code, code)
+        print(f"  [{i + 1}/{len(codes)}] {code} {name}", flush=True)
+        try:
+            events = fetch_fund_dividends(code)
+            applied = apply_dividends(code, name, events)
+            print(f"    {applied}/{len(events)} 次写入日 K", flush=True)
+        except Exception as e:
+            print(f"    失败：{e}（保留已有 dps）", file=sys.stderr)
+        time.sleep(0.25)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="拉取日 K 到 kline/")
     parser.add_argument(
         "--full",
         action="store_true",
         help="忽略本地缓存，全量重新拉取",
+    )
+    parser.add_argument(
+        "--dividend",
+        action="store_true",
+        help="只把分红写入各年日 K，不拉行情",
     )
     return parser.parse_args()
 
@@ -416,6 +540,9 @@ def main() -> int:
     codes = load_codes()
     names = load_names()
     KLINE_DIR.mkdir(parents=True, exist_ok=True)
+    if args.dividend:
+        sync_dividends(codes, names)
+        return 0
     info_cache = load_info_cache()
 
     if args.full:
@@ -469,6 +596,7 @@ def main() -> int:
     }
     INFO_PATH.write_text(json.dumps(info, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {INFO_PATH} ({len(info_items)} ETFs)")
+    sync_dividends(codes, names)
     return 0
 
 

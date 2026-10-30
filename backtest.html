@@ -401,7 +401,7 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 class="panel-title">组合定投回测</h2>
-                <span class="panel-sub">基于 kline/ 日 K 收盘价 · 各 ETF 独立起始资金 / 定投周期 / 每期金额 · 曲线叠加显示</span>
+                <span class="panel-sub">基于 kline/ 日 K 收盘价 · 各 ETF 独立起始资金 / 定投周期 / 每期金额 · 除息现金分红另计</span>
             </div>
             <p id="bt-empty" class="state-msg" hidden>暂无 K 线数据，请先执行 make kline。</p>
             <div id="bt-main" hidden>
@@ -412,11 +412,13 @@
                             <label>结束<input type="date" id="bt-to"></label>
                         </div>
                         <div class="preset-btns">
+                            <button type="button" class="btn" data-range="ytd">今年</button>
                             <button type="button" class="btn" data-range="1y">近一年</button>
                             <button type="button" class="btn" data-range="3y">近三年</button>
                             <button type="button" class="btn" data-range="all">全部</button>
                             <button type="button" class="btn" id="btn-equal">均分定投</button>
                             <button type="button" class="btn" id="btn-hold">当前持仓</button>
+                            <button type="button" class="btn" id="btn-nodca">不定投</button>
                         </div>
                         <div class="alloc-table-wrap">
                             <table class="alloc-table">
@@ -446,6 +448,7 @@
                             <div class="stat-card"><h3>年化收益率</h3><div class="value mono" id="m-annual">—</div></div>
                             <div class="stat-card"><h3>最大回撤</h3><div class="value mono" id="m-dd">—</div></div>
                             <div class="stat-card"><h3>定投期数</h3><div class="value mono" id="m-periods">—</div></div>
+                            <div class="stat-card"><h3>累计分红</h3><div class="value mono" id="m-div">—</div></div>
                         </div>
                         <div class="chart-box">
                             <button type="button" class="chart-fs-btn" data-chart="bt-chart" aria-label="全屏查看资金曲线" title="全屏查看">
@@ -470,6 +473,18 @@
                                 <span class="meta">组合与各 ETF 累计收益率 %（点击图例切换）</span>
                             </div>
                             <canvas id="bt-chart-return"></canvas>
+                        </div>
+                        <div class="chart-box">
+                            <button type="button" class="chart-fs-btn" data-chart="bt-chart-div" aria-label="全屏查看股息分红资金曲线" title="全屏查看">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M14 4h6v6"/><path d="M10 20H4v-6"/><path d="M20 4l-5.5 5.5"/><path d="M4 20l5.5-5.5"/>
+                                </svg>
+                            </button>
+                            <div class="chart-head">
+                                <span class="title">股息分红资金曲线</span>
+                                <span class="meta">除息日现金分红累计 · 按买入前持仓份额 · 不复投（点击图例切换）</span>
+                            </div>
+                            <canvas id="bt-chart-div"></canvas>
                         </div>
                     </div>
                 </div>
@@ -543,13 +558,16 @@
         let holdNames = {};
         let chart = null;
         let returnChart = null;
+        let divChart = null;
         let fsChart = null;
         let fsSourceId = '';
         let lastFundPayload = null;
         let lastReturnPayload = null;
+        let lastDivPayload = null;
         let lastInvested = NaN;
         let lastFinalValue = NaN;
         let lastTotalReturn = NaN;
+        let lastDividend = NaN;
         let klineCache = {};
 
         function codesFromHold(payload) {
@@ -643,6 +661,7 @@
                 applyChartDefaults();
                 if (lastFundPayload) renderChart('bt-chart', 'money', false);
                 if (lastReturnPayload) renderChart('bt-chart-return', 'percent', false);
+                if (lastDivPayload) renderChart('bt-chart-div', 'money', false);
                 redrawFsChart();
             });
         }
@@ -712,7 +731,9 @@
         }
 
         function payloadFor(canvasId) {
-            return canvasId === 'bt-chart-return' ? lastReturnPayload : lastFundPayload;
+            if (canvasId === 'bt-chart-return') return lastReturnPayload;
+            if (canvasId === 'bt-chart-div') return lastDivPayload;
+            return lastFundPayload;
         }
 
         function renderChart(canvasId, kind, fullscreen) {
@@ -723,6 +744,7 @@
             if (!canvas) return null;
             if (canvasId === 'bt-chart' && chart) chart.destroy();
             if (canvasId === 'bt-chart-return' && returnChart) returnChart.destroy();
+            if (canvasId === 'bt-chart-div' && divChart) divChart.destroy();
             if (canvasId === 'bt-chart-fs' && fsChart) fsChart.destroy();
             const instance = new Chart(canvas.getContext('2d'), {
                 type: 'line',
@@ -734,6 +756,7 @@
             });
             if (canvasId === 'bt-chart') chart = instance;
             else if (canvasId === 'bt-chart-return') returnChart = instance;
+            else if (canvasId === 'bt-chart-div') divChart = instance;
             else fsChart = instance;
             return instance;
         }
@@ -753,7 +776,10 @@
             document.getElementById('chartFsTitle').textContent = titleEl?.textContent.trim() || '全屏查看';
             const ret = document.getElementById('m-return').textContent;
             const val = document.getElementById('m-value').textContent;
-            document.getElementById('chartFsMeta').textContent = `${ret} · ${val}`;
+            const divText = document.getElementById('m-div').textContent;
+            document.getElementById('chartFsMeta').textContent = canvasId === 'bt-chart-div'
+                ? `累计分红 ${divText}`
+                : `${ret} · ${val}`;
             const dlg = document.getElementById('chartFsDialog');
             dlg.showModal();
             window.requestAnimationFrame(() => renderChart('bt-chart-fs', chartKind(canvasId), true));
@@ -831,6 +857,7 @@
             if (!Number.isFinite(lastInvested)) return;
             document.getElementById('m-invested').textContent = money(lastInvested);
             document.getElementById('m-value').textContent = money(lastFinalValue);
+            document.getElementById('m-div').textContent = money(lastDividend);
         }
         function bindNumToggle() {
             syncNumToggle();
@@ -885,6 +912,17 @@
             return years.filter((y) => y >= sy && y <= ey);
         }
 
+        function barClose(bar) {
+            if (bar && typeof bar === 'object') return Number(bar.close);
+            return Number(bar);
+        }
+
+        function barDps(bar) {
+            if (!bar || typeof bar !== 'object') return 0;
+            const dps = Number(bar.dps);
+            return dps > 0 ? dps : 0;
+        }
+
         async function loadKline(code, from, to) {
             const cacheKey = `${code}|${from}|${to}`;
             if (klineCache[cacheKey]) return klineCache[cacheKey];
@@ -904,7 +942,10 @@
                 if (!bar || !bar.date) continue;
                 if (from && bar.date < from) continue;
                 if (to && bar.date > to) continue;
-                map.set(bar.date, Number(bar.close));
+                map.set(bar.date, {
+                    close: Number(bar.close),
+                    dps: Number(bar.dps) > 0 ? Number(bar.dps) : 0,
+                });
             }
             klineCache[cacheKey] = map;
             return map;
@@ -1002,6 +1043,13 @@
             updateAllocSummary();
         }
 
+        function setNoDca() {
+            document.querySelectorAll('#alloc-body .amount-input').forEach((input) => {
+                input.value = '0';
+            });
+            updateAllocSummary();
+        }
+
         async function setHoldPreset() {
             let payload = null;
             try {
@@ -1084,7 +1132,10 @@
             if (!full.start || !full.end) return;
             const end = full.end;
             let from = full.start;
-            if (key === '1y') {
+            if (key === 'ytd') {
+                from = `${end.slice(0, 4)}-01-01`;
+                if (from < full.start) from = full.start;
+            } else if (key === '1y') {
                 const d = new Date(end + 'T00:00:00');
                 d.setFullYear(d.getFullYear() - 1);
                 from = ymd(d);
@@ -1161,27 +1212,39 @@
             for (const code of codes) {
                 const cfg = dcaByCode[code];
                 if (!cfg) continue;
-                const etfDays = tradingDays.filter((d) => priceMaps[code].get(d) > 0);
+                const etfDays = tradingDays.filter((d) => barClose(priceMaps[code].get(d)) > 0);
                 investDaysByCode[code] = new Set(dcaDates(from, to, cfg.freq, etfDays));
             }
             const shares = Object.fromEntries(codes.map((c) => [c, 0]));
             const lastClose = Object.fromEntries(codes.map((c) => [c, null]));
             const etfInvested = Object.fromEntries(codes.map((c) => [c, 0]));
+            const etfDivCash = Object.fromEntries(codes.map((c) => [c, 0]));
             const initialPending = { ...initialByCode };
 
             const dates = [];
             const portfolioValues = [];
             const investedSeries = [];
+            const portfolioDiv = [];
             const etfValues = Object.fromEntries(codes.map((c) => [c, []]));
             const etfInvestedSeries = Object.fromEntries(codes.map((c) => [c, []]));
+            const etfDivSeries = Object.fromEntries(codes.map((c) => [c, []]));
             let invested = 0;
             let periods = 0;
+            let totalDiv = 0;
 
             for (const day of tradingDays) {
                 for (const code of codes) {
+                    const dps = barDps(priceMaps[code].get(day));
+                    if (!(dps > 0) || !(shares[code] > 0)) continue;
+                    const cash = shares[code] * dps;
+                    etfDivCash[code] += cash;
+                    totalDiv += cash;
+                }
+
+                for (const code of codes) {
                     const pending = initialPending[code];
                     if (!(pending > 0)) continue;
-                    const price = priceMaps[code].get(day);
+                    const price = barClose(priceMaps[code].get(day));
                     if (!(price > 0)) continue;
                     shares[code] += pending / price;
                     invested += pending;
@@ -1192,7 +1255,7 @@
                 for (const code of codes) {
                     const cfg = dcaByCode[code];
                     if (!cfg || !investDaysByCode[code]?.has(day)) continue;
-                    const price = priceMaps[code].get(day);
+                    const price = barClose(priceMaps[code].get(day));
                     if (!(price > 0) || !(cfg.amount > 0)) continue;
                     shares[code] += cfg.amount / price;
                     invested += cfg.amount;
@@ -1202,16 +1265,18 @@
 
                 let total = 0;
                 for (const code of codes) {
-                    const p = priceMaps[code].get(day);
+                    const p = barClose(priceMaps[code].get(day));
                     if (p > 0) lastClose[code] = p;
                     const val = shares[code] * (lastClose[code] || 0);
                     etfValues[code].push(val);
                     etfInvestedSeries[code].push(etfInvested[code]);
+                    etfDivSeries[code].push(etfDivCash[code]);
                     total += val;
                 }
                 dates.push(day);
                 portfolioValues.push(total);
                 investedSeries.push(invested);
+                portfolioDiv.push(totalDiv);
             }
 
             const portfolioReturn = calcReturnSeries(portfolioValues, investedSeries);
@@ -1225,8 +1290,10 @@
             lastInvested = invested;
             lastFinalValue = finalValue;
             lastTotalReturn = totalReturn;
+            lastDividend = totalDiv;
             document.getElementById('m-invested').textContent = money(invested);
             document.getElementById('m-value').textContent = money(finalValue);
+            document.getElementById('m-div').textContent = money(totalDiv);
             updateNavMeta(from, to, totalReturn);
             const retEl = document.getElementById('m-return');
             retEl.textContent = pct(totalReturn);
@@ -1292,10 +1359,38 @@
                 });
             });
 
+            const divDatasets = [
+                {
+                    label: '累计分红',
+                    data: portfolioDiv,
+                    borderColor: 'rgba(201, 168, 76, 0.95)',
+                    backgroundColor: 'rgba(201, 168, 76, 0.08)',
+                    fill: true,
+                    tension: 0.15,
+                    pointRadius: 0,
+                    borderWidth: 2.5,
+                    stepped: true,
+                },
+            ];
+            codes.forEach((code, i) => {
+                divDatasets.push({
+                    label: `${displayName(code)}[${code}]`,
+                    data: etfDivSeries[code],
+                    borderColor: LINE_COLORS[(i + 2) % LINE_COLORS.length],
+                    fill: false,
+                    tension: 0.15,
+                    pointRadius: 0,
+                    borderWidth: 1.5,
+                    stepped: true,
+                });
+            });
+
             lastFundPayload = { labels: dates, datasets: fundDatasets };
             lastReturnPayload = { labels: dates, datasets: returnDatasets };
+            lastDivPayload = { labels: dates, datasets: divDatasets };
             renderChart('bt-chart', 'money', false);
             renderChart('bt-chart-return', 'percent', false);
+            renderChart('bt-chart-div', 'money', false);
             redrawFsChart();
         }
 
@@ -1335,6 +1430,7 @@
 
             document.getElementById('btn-equal').addEventListener('click', setEqualAmount);
             document.getElementById('btn-hold').addEventListener('click', setHoldPreset);
+            document.getElementById('btn-nodca').addEventListener('click', setNoDca);
             document.getElementById('btn-run').addEventListener('click', runBacktest);
             document.querySelectorAll('[data-range]').forEach((btn) => {
                 btn.addEventListener('click', async () => {

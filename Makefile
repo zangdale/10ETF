@@ -21,7 +21,7 @@ hold:
 	@test -x "$(ADB_PATH)" || (echo "找不到可执行文件: $(ADB_PATH)" && exit 1)
 	python3 fetch_hold.py
 
-# 拉取 10 只 ETF 日 K（东财失败时改用腾讯），写入 kline/yyyy/code.json 与 kline/info.json
+# 拉取 10 只 ETF 日 K（东财失败时改用腾讯），写入 kline/yyyy/code.json 与 kline/info.json；分红记在对应交易日的 dps
 # 默认增量；全量：make kline FULL=1
 kline:
 	python3 kline.py $(if $(FULL),--full,)
