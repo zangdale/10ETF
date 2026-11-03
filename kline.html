@@ -320,6 +320,7 @@
         }
         .info-table {
             width: 100%;
+            min-width: 42rem;
             border-collapse: collapse;
             font-size: 0.82rem;
             table-layout: fixed;
@@ -343,11 +344,12 @@
         .info-table th:nth-child(3),
         .info-table td:nth-child(3) {
             width: auto;
+            min-width: 16rem;
             padding-right: 8px;
         }
         .info-table th.num,
         .info-table td.num {
-            width: 6.5rem;
+            width: 7.2rem;
             text-align: left;
             padding-left: 8px;
         }
@@ -634,6 +636,7 @@
                             <th>代码</th>
                             <th>名称</th>
                             <th><button type="button" class="th-sort" data-sort="week52" aria-sort="none">52周范围</button></th>
+                            <th class="num"><button type="button" class="th-sort" data-sort="week52pct" aria-sort="none">52周涨幅%</button></th>
                             <th class="num"><button type="button" class="th-sort" data-sort="ytd" aria-sort="none">今年涨幅%</button></th>
                         </tr>
                     </thead>
@@ -1169,30 +1172,47 @@
             return ((close - base) / base) * 100;
         }
 
+        function week52Pct(used, close) {
+            if (!Array.isArray(used) || used.length < 2 || !(close > 0)) return NaN;
+            const end = String(used[used.length - 1].date || '');
+            let base = NaN;
+            for (const b of used) {
+                if (String(b.date || '') >= end) break;
+                const c = Number(b.close);
+                if (c > 0) {
+                    base = c;
+                    break;
+                }
+            }
+            if (!(base > 0)) return NaN;
+            return ((close - base) / base) * 100;
+        }
+
         function week52Stats(bars) {
             const ytd = ytdPct(bars);
-            if (!Array.isArray(bars) || !bars.length) return { ytd };
+            if (!Array.isArray(bars) || !bars.length) return { ytd, pct52: NaN };
             const last = bars[bars.length - 1];
             const end = String(last.date || '');
             const from = addDaysYmd(end, -365);
             const window = from ? bars.filter((b) => String(b.date) >= from) : bars;
             const used = window.length ? window : bars;
+            const close = Number(last.close);
+            const pct52 = week52Pct(used, close);
             let lo = Infinity;
             let hi = -Infinity;
             for (const b of used) {
                 const low = Number(b.low);
                 const high = Number(b.high);
-                const close = Number(b.close);
+                const c = Number(b.close);
                 if (Number.isFinite(low)) lo = Math.min(lo, low);
                 if (Number.isFinite(high)) hi = Math.max(hi, high);
-                if (!Number.isFinite(low) && Number.isFinite(close)) lo = Math.min(lo, close);
-                if (!Number.isFinite(high) && Number.isFinite(close)) hi = Math.max(hi, close);
+                if (!Number.isFinite(low) && Number.isFinite(c)) lo = Math.min(lo, c);
+                if (!Number.isFinite(high) && Number.isFinite(c)) hi = Math.max(hi, c);
             }
-            const close = Number(last.close);
-            if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return { ytd };
+            if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return { ytd, pct52 };
             const span = hi - lo;
             const pos = span > 0 && Number.isFinite(close) ? (close - lo) / span : (Number.isFinite(close) ? 1 : NaN);
-            return { close, lo, hi, pos, ytd, from: used[0] && used[0].date, to: end, bars: used.length };
+            return { close, lo, hi, pos, ytd, pct52, from: used[0] && used[0].date, to: end, bars: used.length };
         }
 
         function week52Cell(stats) {
@@ -1229,6 +1249,12 @@
             return Math.max(0, Math.min(100, pos * 100));
         }
 
+        function week52PctValue(code) {
+            const stats = week52ByCode[code];
+            const pct = stats && stats.pct52;
+            return Number.isFinite(pct) ? pct : NaN;
+        }
+
         function ytdValue(code) {
             const stats = week52ByCode[code];
             const pct = stats && stats.ytd;
@@ -1237,6 +1263,7 @@
 
         function sortValue(code) {
             if (tableSortKey === 'week52') return week52Value(code);
+            if (tableSortKey === 'week52pct') return week52PctValue(code);
             if (tableSortKey === 'ytd') return ytdValue(code);
             return NaN;
         }
@@ -1288,6 +1315,7 @@
                     <td class="mono">${escapeHtml(row.code)}</td>
                     <td>${escapeHtml(displayName(row.code))}</td>
                     <td>${week52Cell(stats)}</td>
+                    <td class="num">${pctCell(week52PctValue(row.code))}</td>
                     <td class="num">${pctCell(ytdValue(row.code))}</td>
                 </tr>`;
             }).join('');
