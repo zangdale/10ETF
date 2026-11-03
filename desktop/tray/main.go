@@ -197,7 +197,10 @@ func updateMenu(etfs []etf, slots []*systray.MenuItem, status *systray.MenuItem,
 	defer cancel()
 	quotes, err := fetchQuotes(ctx, etfs)
 	if err == nil && board != nil {
-		keepPremiums(board.snapshot(), quotes)
+		prev := board.snapshot()
+		keepPremiums(prev, quotes)
+		attachKDJK(ctx, quotes)
+		keepKDJK(prev, quotes)
 	}
 	if err != nil {
 		if shown {
@@ -212,11 +215,7 @@ func updateMenu(etfs []etf, slots []*systray.MenuItem, status *systray.MenuItem,
 		if i >= len(slots) {
 			break
 		}
-		prem := ""
-		if q.Premium != nil {
-			prem = formatPct(*q.Premium)
-		}
-		slots[i].SetTitle(rowTitle(i+1, q.Name, prem, formatPctOrDash(q.Pct)))
+		slots[i].SetTitle(rowTitle(i+1, q.Name, formatPremiumK(q.Premium, q.KDJK), formatPctOrDash(q.Pct)))
 		slots[i].SetTooltip(q.tip())
 	}
 	board.set(quotes)

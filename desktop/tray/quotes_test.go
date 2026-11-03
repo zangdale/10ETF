@@ -28,14 +28,14 @@ func TestFormatPct(t *testing.T) {
 }
 
 func TestRowTitleUsesColorMark(t *testing.T) {
-	got := rowTitle(1, "中证红利", "-1.00%", "+0.83%")
+	got := rowTitle(1, "中证红利", "-1.00% K55.0", "+0.83%")
 	if !strings.HasPrefix(got, rowMark) || rowMark != "\u200b" {
 		t.Fatalf("title %q", got)
 	}
 	if !strings.Contains(got, "中证红利") || !strings.HasSuffix(got, "\t+0.83%") {
 		t.Fatalf("title %q", got)
 	}
-	if !strings.Contains(got, "\t-1.00%\t") {
+	if !strings.Contains(got, "\t-1.00% K55.0\t") {
 		t.Fatalf("premium column %q", got)
 	}
 	body, err := os.ReadFile("color_darwin.m")

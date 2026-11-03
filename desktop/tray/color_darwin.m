@@ -7,6 +7,34 @@
 static IMP etfOriginalSetTitle = NULL;
 static int etfApplyingColor = 0;
 
+static void etfColorKInPremium(NSMutableAttributedString *attr, NSString *premium, NSUInteger premStart, NSFont *digits) {
+	NSRange spaceK = [premium rangeOfString:@" K"];
+	if (spaceK.location == NSNotFound || spaceK.location + 2 >= premium.length) {
+		return;
+	}
+	NSString *kToken = [premium substringFromIndex:spaceK.location + 1];
+	if (![kToken hasPrefix:@"K"] || [kToken isEqualToString:@"K—"]) {
+		return;
+	}
+	double kValue = 0;
+	const char *kutf8 = kToken.UTF8String;
+	if (kutf8 == NULL || sscanf(kutf8, "K%lf", &kValue) != 1) {
+		return;
+	}
+	NSColor *color = nil;
+	if (kValue < 20.0) {
+		color = [NSColor systemRedColor];
+	} else if (kValue > 80.0) {
+		color = [NSColor systemGreenColor];
+	}
+	if (color == nil) {
+		return;
+	}
+	NSRange kRange = NSMakeRange(premStart + spaceK.location + 1, kToken.length);
+	[attr addAttribute:NSForegroundColorAttributeName value:color range:kRange];
+	[attr addAttribute:NSFontAttributeName value:digits range:kRange];
+}
+
 static NSAttributedString *etfColoredTitle(NSString *shown) {
 	NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:shown];
 	NSUInteger len = shown.length;
@@ -43,7 +71,7 @@ static NSAttributedString *etfColoredTitle(NSString *shown) {
 	if (quoteRow) {
 		// 名称左对齐，溢价在名称和涨跌幅之间居中，涨跌幅靠右并贴近菜单右缘。
 		NSString *sampleName = @"10  中证红利";
-		NSString *samplePrem = @"+100.00%";
+		NSString *samplePrem = @"+100.00% K100.0";
 		NSString *samplePct = @"+12.34%";
 		CGFloat nameWidth = ceil([sampleName sizeWithAttributes:textAttrs].width);
 		NSString *left = [shown substringToIndex:firstTab.location];
@@ -69,7 +97,9 @@ static NSAttributedString *etfColoredTitle(NSString *shown) {
 		NSTextTab *end = [[NSTextTab alloc] initWithTextAlignment:NSTextAlignmentRight location:right options:@{}];
 		[style setTabStops:@[mid, end]];
 		if (premium.length > 0) {
-			[attr addAttribute:NSFontAttributeName value:digits range:NSMakeRange(firstTab.location + 1, premium.length)];
+			NSUInteger premStart = firstTab.location + 1;
+			[attr addAttribute:NSFontAttributeName value:digits range:NSMakeRange(premStart, premium.length)];
+			etfColorKInPremium(attr, premium, premStart, digits);
 		}
 	} else {
 		NSString *samplePrefix = @"恒生科技";
@@ -148,6 +178,50 @@ static void etfInstallColor(void) {
 
 void installMenuTitleColor(void) {
 	etfInstallColor();
+}
+
+int probeMenuTitleKColor(const char *utf8Title) {
+	@autoreleasepool {
+		installMenuTitleColor();
+		if (utf8Title == NULL) {
+			return -2;
+		}
+		NSString *title = [NSString stringWithUTF8String:utf8Title];
+		NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:@"placeholder" action:NULL keyEquivalent:@""];
+		[item setTitle:title];
+		NSAttributedString *attr = item.attributedTitle;
+		if (attr == nil || attr.length == 0) {
+			return -2;
+		}
+		NSRange firstTab = [attr.string rangeOfString:@"\t"];
+		NSRange lastTab = [attr.string rangeOfString:@"\t" options:NSBackwardsSearch];
+		if (firstTab.location == NSNotFound || lastTab.location == NSNotFound || firstTab.location == lastTab.location) {
+			return -3;
+		}
+		NSString *premium = [attr.string substringWithRange:NSMakeRange(firstTab.location + 1, lastTab.location - firstTab.location - 1)];
+		NSRange spaceK = [premium rangeOfString:@" K"];
+		if (spaceK.location == NSNotFound || spaceK.location + 2 >= premium.length) {
+			return -3;
+		}
+		NSUInteger kIndex = firstTab.location + 1 + spaceK.location + 1;
+		if (kIndex >= attr.length) {
+			return -3;
+		}
+		NSColor *color = [attr attribute:NSForegroundColorAttributeName atIndex:kIndex effectiveRange:NULL];
+		NSColor *rgb = [color colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
+		if (rgb == nil) {
+			return 0;
+		}
+		CGFloat r = 0, g = 0, b = 0, a = 0;
+		[rgb getRed:&r green:&g blue:&b alpha:&a];
+		if (r > 0.55 && r > g + 0.2 && r > b + 0.2) {
+			return 1;
+		}
+		if (g > 0.35 && g > r + 0.15 && g > b) {
+			return -1;
+		}
+		return 0;
+	}
 }
 
 int probeMenuTitleColor(const char *utf8Title) {

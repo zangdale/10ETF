@@ -7,6 +7,7 @@ package main
 void installMenuTitleColor(void);
 void hideDockIcon(void);
 int probeMenuTitleColor(const char *utf8Title);
+int probeMenuTitleKColor(const char *utf8Title);
 void setIndexMenuItemCount(int count);
 void setIndexMenuItem(int index, const char *title, const char *url);
 void popIndexMenu(void);
@@ -22,6 +23,12 @@ func probeMenuTitleColor(title string) int {
 	cstr := C.CString(title)
 	defer C.free(unsafe.Pointer(cstr))
 	return int(C.probeMenuTitleColor(cstr))
+}
+
+func probeMenuTitleKColor(title string) int {
+	cstr := C.CString(title)
+	defer C.free(unsafe.Pointer(cstr))
+	return int(C.probeMenuTitleKColor(cstr))
 }
 
 func prepareIndexMenu(count int) {

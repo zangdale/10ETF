@@ -32,6 +32,7 @@ type quote struct {
 	Price   *float64
 	Pct     *float64
 	Premium *float64 // 溢价%：(现价 / IOPV - 1) * 100
+	KDJK    *float64 // 日 K KDJ 的 K（9,3,3）
 }
 
 func bundleInfoPath(exe string) string {
@@ -597,9 +598,9 @@ func formatPctOrDash(v *float64) string {
 	return formatPct(*v)
 }
 
-func rowTitle(rank int, name, premium, pct string) string {
-	// 名称靠左，溢价居中，涨跌幅靠右。两处制表位由 color_darwin.m 定位。
-	return fmt.Sprintf("%s%2d  %s\t%s\t%s", rowMark, rank, name, premium, pct)
+func rowTitle(rank int, name, premiumK, pct string) string {
+	// 名称靠左，溢价与 K 居中，涨跌幅靠右。两处制表位由 color_darwin.m 定位。
+	return fmt.Sprintf("%s%2d  %s\t%s\t%s", rowMark, rank, name, premiumK, pct)
 }
 
 func indexTitle(name, pct string) string {
@@ -607,13 +608,13 @@ func indexTitle(name, pct string) string {
 }
 
 func (q quote) tip() string {
-	return fmt.Sprintf("%s  当前 %s  溢价 %s  点击打开详情", q.Code, formatPrice(q.Price), formatPctOrDash(q.Premium))
+	return fmt.Sprintf("%s  当前 %s  溢价 %s  %s  点击打开详情", q.Code, formatPrice(q.Price), formatPctOrDash(q.Premium), formatK(q.KDJK))
 }
 
 func summaryLine(quotes []quote) string {
 	parts := make([]string, 0, len(quotes))
 	for _, q := range quotes {
-		parts = append(parts, fmt.Sprintf("%s %s %s 溢价 %s", q.Name, formatPrice(q.Price), formatPctOrDash(q.Pct), formatPctOrDash(q.Premium)))
+		parts = append(parts, fmt.Sprintf("%s %s %s 溢价 %s %s", q.Name, formatPrice(q.Price), formatPctOrDash(q.Pct), formatPctOrDash(q.Premium), formatK(q.KDJK)))
 	}
 	return strings.Join(parts, "  ")
 }
