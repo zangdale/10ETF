@@ -17,8 +17,7 @@
       "price": 1.031,
       "market_value": 40930.7,
       "pnl": 397.0,
-      "pnl_pct": 0.98,
-      "tiingo_name": "Bosera CSI Dividend Low Volatility 100 Index ETF"
+      "pnl_pct": 0.98
     },
     {
       "code": "561580",
@@ -30,8 +29,7 @@
       "price": 1.259,
       "market_value": 23291.5,
       "pnl": 2053.5,
-      "pnl_pct": 9.67,
-      "tiingo_name": "HuataiPineBridge Fund Management Co Ltd"
+      "pnl_pct": 9.67
     },
     {
       "code": "515180",
@@ -43,8 +41,7 @@
       "price": 1.436,
       "market_value": 20247.6,
       "pnl": 1381.8,
-      "pnl_pct": 7.32,
-      "tiingo_name": "E Fund Management Company. Ltd"
+      "pnl_pct": 7.32
     },
     {
       "code": "518680",
@@ -56,8 +53,7 @@
       "price": 9.455,
       "market_value": 5673.0,
       "pnl": 257.4,
-      "pnl_pct": 4.75,
-      "tiingo_name": "Fullgoal Fund Management Co Ltd"
+      "pnl_pct": 4.75
     },
     {
       "code": "513650",
@@ -69,8 +65,7 @@
       "price": 2.024,
       "market_value": 5262.4,
       "pnl": 442.0,
-      "pnl_pct": 9.17,
-      "tiingo_name": "China Southern Asset Management Co. Ltd"
+      "pnl_pct": 9.17
     },
     {
       "code": "159985",
@@ -82,8 +77,7 @@
       "price": 2.423,
       "market_value": 1211.5,
       "pnl": 1746.0,
-      "pnl_pct": null,
-      "tiingo_name": "China Asset Management Company. Ltd"
+      "pnl_pct": null
     },
     {
       "code": "511010",
@@ -95,8 +89,7 @@
       "price": 141.222,
       "market_value": 42366.6,
       "pnl": 181.8,
-      "pnl_pct": 0.43,
-      "tiingo_name": "Guotai Asset Management Company Ltd"
+      "pnl_pct": 0.43
     },
     {
       "code": "511360",
@@ -108,8 +101,7 @@
       "price": 113.896,
       "market_value": 125285.6,
       "pnl": 336.6,
-      "pnl_pct": 0.27,
-      "tiingo_name": "HFT Investment Management Co. Ltd."
+      "pnl_pct": 0.27
     },
     {
       "code": "513870",
@@ -121,8 +113,7 @@
       "price": 2.08,
       "market_value": 9776.0,
       "pnl": 822.5,
-      "pnl_pct": 9.19,
-      "tiingo_name": "Fullgoal Fund Management Co Ltd"
+      "pnl_pct": 9.19
     },
     {
       "code": "520870",
@@ -134,8 +125,7 @@
       "price": 1.159,
       "market_value": 24570.8,
       "pnl": 2204.8,
-      "pnl_pct": 9.86,
-      "tiingo_name": "E Fund Itau IBOVESPA Exchange Traded Fund (QDII)"
+      "pnl_pct": 9.86
     }
   ]
 }

@@ -4,13 +4,13 @@
 
 ## 拉取持仓
 
-`.env` 中配置 `ADB_PATH`（可选 `ADB_DEVICE`）。若配置了 `TIINGO_API_KEY`，会额外拉取 Tiingo 名称。手机/模拟器已打开同花顺交易页时：
+`.env` 中配置 `ADB_PATH`（可选 `ADB_DEVICE`）。手机/模拟器已打开同花顺交易页时：
 
 ```bash
 make hold
 ```
 
-配置了 `TIINGO_API_KEY` 时，`make hold` 会请求 Tiingo 并写入 `tiingo_name`；未配置则跳过。页面图例与名称列使用 `name`（同花顺简称），显示为 `名称[代码]`。`515180` 固定为「中证红利」。
+页面图例与名称列使用 `name`（同花顺简称），显示为 `名称[代码]`。`515180` 固定为「中证红利」。
 
 - `etf_hold.json`：最新快照（当前持仓页）
 - `etf_hold/yyyy-mm-dd.json`：当日历史（同日多次运行会覆盖；历史持仓页按日期画折线）

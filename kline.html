@@ -8,6 +8,9 @@
     <title>10ETF 历史 K 线</title>
     <script>
         (function () {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(function () {});
+            }
             var t = localStorage.getItem('10etf-theme');
             if (t !== 'light' && t !== 'dark') t = 'dark';
             document.documentElement.setAttribute('data-theme', t);
@@ -22,9 +25,11 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap"></noscript>
     <link rel="stylesheet" href="nav.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="data-cache.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <style>
         :root {
             --bg-primary: #0a0e17;
@@ -616,7 +621,7 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 class="panel-title">历史日 K</h2>
-                <span class="panel-sub">收盘价折线 · 表格为最新价在 52 周高低点中的位置 · 数据来自 Tiingo</span>
+                <span class="panel-sub">收盘价折线 · 表格为最新价在 52 周高低点中的位置 · 数据来自东财</span>
             </div>
             <div class="range-bar">
                 <button type="button" class="range-btn" data-range="all">全部</button>
@@ -767,7 +772,7 @@
 
         async function loadHoldCodes() {
             try {
-                const r = await fetch('etf_hold.json', { cache: 'no-store' });
+                const r = await etfFetch('etf_hold.json');
                 if (!r.ok) return [];
                 const payload = await r.json();
                 holdNames = namesFromHold(payload);
@@ -984,7 +989,7 @@
             const years = yearsForRange(from, to, info.years);
             const chunks = await Promise.all(years.map(async (year) => {
                 try {
-                    const r = await fetch(`kline/${year}/${code}.json`, { cache: 'no-store' });
+                    const r = await etfFetch(`kline/${year}/${code}.json`, { revision: info.end || '' });
                     if (!r.ok) return [];
                     const data = await r.json();
                     return Array.isArray(data.items) ? data.items : [];
@@ -1410,7 +1415,7 @@
 
             let info = null;
             try {
-                const r = await fetch('kline/info.json', { cache: 'no-store' });
+                const r = await etfFetch('kline/info.json');
                 if (r.ok) info = await r.json();
             } catch { /* ignore */ }
 

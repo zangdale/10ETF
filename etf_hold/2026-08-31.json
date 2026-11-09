@@ -10,7 +10,6 @@
     {
       "code": "518680",
       "name": "金ETF",
-      "tiingo_name": "Fullgoal Fund Management Co Ltd",
       "amount": 300,
       "available": 300,
       "cost": 8.529,
@@ -22,7 +21,6 @@
     {
       "code": "520870",
       "name": "巴西ETF",
-      "tiingo_name": "E Fund Itau IBOVESPA Exchange Traded Fund (QDII)",
       "amount": 21000,
       "available": 21000,
       "cost": 1.055,
@@ -34,7 +32,6 @@
     {
       "code": "513870",
       "name": "纳指指数",
-      "tiingo_name": "Fullgoal Fund Management Co Ltd",
       "amount": 2200,
       "available": 2200,
       "cost": 1.742,
@@ -46,7 +43,6 @@
     {
       "code": "513650",
       "name": "标普ETF",
-      "tiingo_name": "China Southern Asset Management Co. Ltd",
       "amount": 100,
       "available": 100,
       "cost": -2.064,
@@ -58,7 +54,6 @@
     {
       "code": "511010",
       "name": "国债ETF",
-      "tiingo_name": "Guotai Asset Management Company Ltd",
       "amount": 300,
       "available": 300,
       "cost": 140.616,
@@ -70,7 +65,6 @@
     {
       "code": "511360",
       "name": "短融ETF",
-      "tiingo_name": "HFT Investment Management Co. Ltd.",
       "amount": 1200,
       "available": 1200,
       "cost": 113.615,
@@ -82,7 +76,6 @@
     {
       "code": "159307",
       "name": "100红利",
-      "tiingo_name": "Bosera CSI Dividend Low Volatility 100 Index ETF",
       "amount": 35700,
       "available": 35200,
       "cost": 1.019,
@@ -94,7 +87,6 @@
     {
       "code": "561580",
       "name": "央企红利",
-      "tiingo_name": "HuataiPineBridge Fund Management Co Ltd",
       "amount": 19500,
       "available": 19500,
       "cost": 1.156,
@@ -106,7 +98,6 @@
     {
       "code": "515180",
       "name": "中证红利",
-      "tiingo_name": "E Fund Management Company. Ltd",
       "amount": 14300,
       "available": 14300,
       "cost": 1.342,
@@ -118,7 +109,6 @@
     {
       "code": "159985",
       "name": "豆粕ETF",
-      "tiingo_name": "China Asset Management Company. Ltd",
       "amount": 1500,
       "available": 1500,
       "cost": 1.205,

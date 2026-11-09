@@ -1,0 +1,17 @@
+/sw.js
+  Cache-Control: no-cache
+
+/data-cache.js
+  Cache-Control: no-cache
+
+/*.html
+  Cache-Control: no-cache
+
+/etf_hold.json
+  Cache-Control: no-cache
+
+/etf_hold/index.json
+  Cache-Control: no-cache
+
+/kline/info.json
+  Cache-Control: no-cache

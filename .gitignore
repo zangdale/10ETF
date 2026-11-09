@@ -20,7 +20,6 @@ env/
 etf_meta.json
 etf_metrics.json
 .adb/
-.tiingo_meta.json
 *.csv
 
 # Logs

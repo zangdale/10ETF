@@ -16,9 +16,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import date, datetime
 from pathlib import Path
@@ -332,65 +329,6 @@ def hold_list(adb: Adb) -> dict[str, Any]:
     }
 
 
-TIINGO_META_CACHE = ROOT / ".tiingo_meta.json"
-
-
-def _load_tiingo_cache() -> dict[str, Any]:
-    if not TIINGO_META_CACHE.is_file():
-        return {}
-    try:
-        data = json.loads(TIINGO_META_CACHE.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-
-def _save_tiingo_cache(cache: dict[str, Any]) -> None:
-    TIINGO_META_CACHE.write_text(
-        json.dumps(cache, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-
-
-def fetch_tiingo_name(code: str, token: str, timeout: int = 20) -> str | None:
-    ticker = urllib.parse.quote(code.strip(), safe="")
-    url = f"https://api.tiingo.com/tiingo/daily/{ticker}?token={urllib.parse.quote(token, safe='')}"
-    req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            payload = json.loads(resp.read().decode("utf-8", errors="replace"))
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, OSError):
-        return None
-    if not isinstance(payload, dict):
-        return None
-    name = str(payload.get("name") or "").strip()
-    return name or None
-
-
-def enrich_names_from_tiingo(items: list[dict[str, Any]]) -> None:
-    token = os.environ.get("TIINGO_API_KEY", "").strip()
-    if not token:
-        print("未配置 TIINGO_API_KEY，跳过 Tiingo 名称", file=sys.stderr)
-        return
-    cache = _load_tiingo_cache()
-    changed = False
-    for item in items:
-        code = str(item.get("code") or "").strip()
-        if not code:
-            continue
-        cached = cache.get(code)
-        name = str(cached.get("name") or "").strip() if isinstance(cached, dict) else ""
-        if not name:
-            name = fetch_tiingo_name(code, token) or ""
-            if name:
-                cache[code] = {"name": name}
-                changed = True
-            time.sleep(0.15)
-        if name:
-            item["tiingo_name"] = name
-    if changed:
-        _save_tiingo_cache(cache)
-
-
 NAME_OVERRIDES = {
     "515180": "中证红利",
 }
@@ -454,7 +392,6 @@ def main() -> int:
     adb = Adb(adb_bin, device)
     try:
         snapshot = hold_list(adb)
-        enrich_names_from_tiingo(snapshot["items"])
         stabilize_temp_names(snapshot["items"])
         apply_name_overrides(snapshot["items"])
     except subprocess.CalledProcessError as e:

@@ -35,6 +35,13 @@ class Handler(SimpleHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
+    def end_headers(self) -> None:
+        path = urlparse(self.path).path
+        if path != "/etf_hold/index.json":
+            if path in ("/sw.js", "/data-cache.js") or path.endswith(".html"):
+                self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path in ("/", "/index.html", "/index.htm"):
