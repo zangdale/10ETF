@@ -1,11 +1,11 @@
 {
-  "fetched_at": "2026-11-09T14:53:15",
+  "fetched_at": "2026-11-09T15:37:44",
   "date": "2026-11-09",
   "position": 0.0,
-  "total": 314341.33,
-  "float_profit": 7939.83,
-  "total_value": 267533.5,
-  "available": 46806.83,
+  "total": 314278.03,
+  "float_profit": 7876.53,
+  "total_value": 267470.2,
+  "available": 806.78,
   "items": [
     {
       "code": "561580",
@@ -14,10 +14,10 @@
       "available": 2900,
       "cost": 0.803,
       "cost_value": 3934.7,
-      "price": 1.287,
-      "market_value": 6306.3,
-      "pnl": 2371.6,
-      "pnl_pct": 60.27
+      "price": 1.286,
+      "market_value": 6301.4,
+      "pnl": 2366.7,
+      "pnl_pct": 60.15
     },
     {
       "code": "515180",
@@ -38,10 +38,10 @@
       "available": 2200,
       "cost": 0.759,
       "cost_value": 2428.8,
-      "price": 1.061,
-      "market_value": 3395.2,
-      "pnl": 966.4,
-      "pnl_pct": 39.79
+      "price": 1.06,
+      "market_value": 3392.0,
+      "pnl": 963.2,
+      "pnl_pct": 39.66
     },
     {
       "code": "513870",
@@ -62,10 +62,10 @@
       "available": 10100,
       "cost": 1.981,
       "cost_value": 20008.1,
-      "price": 1.947,
-      "market_value": 19664.7,
-      "pnl": -343.4,
-      "pnl_pct": -1.72
+      "price": 1.944,
+      "market_value": 19634.4,
+      "pnl": -373.7,
+      "pnl_pct": -1.87
     },
     {
       "code": "520870",
@@ -86,10 +86,10 @@
       "available": 15100,
       "cost": 2.133,
       "cost_value": 32208.3,
-      "price": 2.111,
-      "market_value": 31876.1,
-      "pnl": -332.2,
-      "pnl_pct": -1.03
+      "price": 2.11,
+      "market_value": 31861.0,
+      "pnl": -347.3,
+      "pnl_pct": -1.08
     },
     {
       "code": "518680",
@@ -98,10 +98,10 @@
       "available": 3800,
       "cost": 8.976,
       "cost_value": 34108.8,
-      "price": 8.786,
-      "market_value": 33386.8,
-      "pnl": -722.0,
-      "pnl_pct": -2.12
+      "price": 8.783,
+      "market_value": 33375.4,
+      "pnl": -733.4,
+      "pnl_pct": -2.15
     },
     {
       "code": "511010",
@@ -110,9 +110,9 @@
       "available": 400,
       "cost": 139.913,
       "cost_value": 55965.2,
-      "price": 141.454,
-      "market_value": 56581.6,
-      "pnl": 616.4,
+      "price": 141.458,
+      "market_value": 56583.2,
+      "pnl": 618.0,
       "pnl_pct": 1.1
     },
     {
