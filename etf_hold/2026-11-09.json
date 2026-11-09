@@ -1,0 +1,131 @@
+{
+  "fetched_at": "2026-11-09T14:53:15",
+  "date": "2026-11-09",
+  "position": 0.0,
+  "total": 314341.33,
+  "float_profit": 7939.83,
+  "total_value": 267533.5,
+  "available": 46806.83,
+  "items": [
+    {
+      "code": "561580",
+      "name": "央企红利",
+      "amount": 4900,
+      "available": 2900,
+      "cost": 0.803,
+      "cost_value": 3934.7,
+      "price": 1.287,
+      "market_value": 6306.3,
+      "pnl": 2371.6,
+      "pnl_pct": 60.27
+    },
+    {
+      "code": "515180",
+      "name": "中证红利",
+      "amount": 5100,
+      "available": 5100,
+      "cost": 1.128,
+      "cost_value": 5752.8,
+      "price": 1.379,
+      "market_value": 7032.9,
+      "pnl": 1280.1,
+      "pnl_pct": 22.25
+    },
+    {
+      "code": "159307",
+      "name": "100红利",
+      "amount": 3200,
+      "available": 2200,
+      "cost": 0.759,
+      "cost_value": 2428.8,
+      "price": 1.061,
+      "market_value": 3395.2,
+      "pnl": 966.4,
+      "pnl_pct": 39.79
+    },
+    {
+      "code": "513870",
+      "name": "纳指指数",
+      "amount": 5700,
+      "available": 5700,
+      "cost": 1.941,
+      "cost_value": 11063.7,
+      "price": 1.984,
+      "market_value": 11308.8,
+      "pnl": 245.1,
+      "pnl_pct": 2.22
+    },
+    {
+      "code": "513650",
+      "name": "标普ETF",
+      "amount": 10100,
+      "available": 10100,
+      "cost": 1.981,
+      "cost_value": 20008.1,
+      "price": 1.947,
+      "market_value": 19664.7,
+      "pnl": -343.4,
+      "pnl_pct": -1.72
+    },
+    {
+      "code": "520870",
+      "name": "巴西ETF",
+      "amount": 6700,
+      "available": 6700,
+      "cost": 0.505,
+      "cost_value": 3383.5,
+      "price": 0.993,
+      "market_value": 6653.1,
+      "pnl": 3269.6,
+      "pnl_pct": 96.63
+    },
+    {
+      "code": "159985",
+      "name": "豆粕ETF",
+      "amount": 15100,
+      "available": 15100,
+      "cost": 2.133,
+      "cost_value": 32208.3,
+      "price": 2.111,
+      "market_value": 31876.1,
+      "pnl": -332.2,
+      "pnl_pct": -1.03
+    },
+    {
+      "code": "518680",
+      "name": "金ETF",
+      "amount": 3800,
+      "available": 3800,
+      "cost": 8.976,
+      "cost_value": 34108.8,
+      "price": 8.786,
+      "market_value": 33386.8,
+      "pnl": -722.0,
+      "pnl_pct": -2.12
+    },
+    {
+      "code": "511010",
+      "name": "国债ETF",
+      "amount": 400,
+      "available": 400,
+      "cost": 139.913,
+      "cost_value": 55965.2,
+      "price": 141.454,
+      "market_value": 56581.6,
+      "pnl": 616.4,
+      "pnl_pct": 1.1
+    },
+    {
+      "code": "511360",
+      "name": "短融ETF",
+      "amount": 800,
+      "available": 800,
+      "cost": 113.425,
+      "cost_value": 90740.0,
+      "price": 114.16,
+      "market_value": 91328.0,
+      "pnl": 588.0,
+      "pnl_pct": 0.65
+    }
+  ]
+}
