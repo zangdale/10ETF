@@ -298,6 +298,48 @@
             border-color: rgba(201, 168, 76, 0.45);
             background: var(--gold-dim);
         }
+        .range-year { position: relative; }
+        .range-year-btn::after {
+            content: "";
+            display: inline-block;
+            margin-left: 6px;
+            border: 4px solid transparent;
+            border-top-color: currentColor;
+            vertical-align: 1px;
+        }
+        .range-year-menu {
+            position: absolute;
+            z-index: 30;
+            top: calc(100% + 6px);
+            left: 0;
+            min-width: 7.5rem;
+            max-height: 16rem;
+            overflow: auto;
+            padding: 4px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-card);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+        }
+        .range-year-menu[hidden] { display: none; }
+        .range-year-menu button {
+            display: block;
+            width: 100%;
+            padding: 7px 10px;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            text-align: left;
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.78rem;
+        }
+        .range-year-menu button:hover,
+        .range-year-menu button[aria-selected="true"] {
+            color: var(--gold);
+            background: var(--gold-dim);
+        }
         .range-dates {
             display: flex;
             flex-wrap: wrap;
@@ -626,7 +668,10 @@
             <div class="range-bar">
                 <button type="button" class="range-btn" data-range="all">全部</button>
                 <button type="button" class="range-btn active" data-range="year">本年</button>
-                <button type="button" class="range-btn" data-range="1y">一年</button>
+                <div class="range-year">
+                    <button type="button" class="range-btn range-year-btn" id="range-years-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="range-years-menu">一年</button>
+                    <div class="range-year-menu" id="range-years-menu" role="listbox" aria-label="按年数查看" hidden></div>
+                </div>
                 <button type="button" class="range-btn" data-range="month">本月</button>
                 <div class="range-dates">
                     <label>从 <input type="date" id="range-from"></label>
@@ -699,7 +744,23 @@
     <script>
         const NAME_OVERRIDE = { '515180': '中证红利' };
         const INVESTING_SLUG = { '511010': 'guotai-sse-deliverable-5-tb' };
-        const RANGE_LABEL = { all: '全部', year: '本年', '1y': '一年', month: '本月', custom: '自定义' };
+        const RANGE_LABEL = { all: '全部', year: '本年', month: '本月', custom: '自定义' };
+        const CN_DIGIT = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+        function yearSpanLabel(n) {
+            if (n === 2) return '两年';
+            if (n > 0 && n < 10) return CN_DIGIT[n] + '年';
+            if (n === 10) return '十年';
+            if (n > 10 && n < 20) return '十' + CN_DIGIT[n - 10] + '年';
+            if (n === 20) return '二十年';
+            return n + '年';
+        }
+
+        function rangeLabel(key) {
+            const years = /^(\d+)y$/.exec(key || '');
+            if (years) return yearSpanLabel(Number(years[1]));
+            return RANGE_LABEL[key] || '自定义';
+        }
         const LINE_COLORS = [
             'rgba(201, 168, 76, 0.95)',
             'rgba(59, 138, 138, 0.95)',
@@ -880,9 +941,11 @@
             if (key === 'year') {
                 return { from: `${now.getFullYear()}-01-01`, to: end };
             }
-            if (key === '1y') {
+            const years = /^(\d+)y$/.exec(key || '');
+            if (years) {
+                const n = Number(years[1]);
                 const s = new Date(now);
-                s.setFullYear(s.getFullYear() - 1);
+                s.setFullYear(s.getFullYear() - n);
                 return { from: ymd(s), to: end };
             }
             return { from: '', to: '' };
@@ -1348,7 +1411,7 @@
         async function drawCharts() {
             if (loading || !infoItems.length) return;
             const { from, to } = filterRange();
-            document.getElementById('nav-range').textContent = RANGE_LABEL[activeRange] || '自定义';
+            document.getElementById('nav-range').textContent = rangeLabel(activeRange);
             await Promise.all(infoItems.map(async (row, i) => {
                 const code = row.code;
                 const bars = await loadBarsForCode(code, from, to);
@@ -1367,11 +1430,34 @@
             }));
         }
 
+        function closeYearMenu() {
+            const menu = document.getElementById('range-years-menu');
+            const btn = document.getElementById('range-years-btn');
+            if (!menu || !btn) return;
+            menu.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+        }
+
+        function syncYearSelect(key) {
+            const btn = document.getElementById('range-years-btn');
+            const menu = document.getElementById('range-years-menu');
+            if (!btn || !menu) return;
+            const years = /^(\d+)y$/.exec(key || '');
+            const n = years ? Number(years[1]) : 0;
+            btn.classList.toggle('active', n >= 1 && n <= 20);
+            btn.textContent = n ? yearSpanLabel(n) : '一年';
+            menu.querySelectorAll('button').forEach((item) => {
+                item.setAttribute('aria-selected', item.dataset.years === String(n) ? 'true' : 'false');
+            });
+            if (!n) closeYearMenu();
+        }
+
         function setRange(key, { syncInputs = true } = {}) {
             activeRange = key;
             document.querySelectorAll('.range-btn').forEach((btn) => {
                 btn.classList.toggle('active', btn.dataset.range === key);
             });
+            syncYearSelect(key);
             if (syncInputs) {
                 const b = rangeBounds(key);
                 document.getElementById('range-from').value = b.from;
@@ -1399,14 +1485,42 @@
                 btn.addEventListener('click', () => sortInfo(btn.dataset.sort || ''));
             });
 
-            document.querySelectorAll('.range-btn').forEach((btn) => {
-                btn.addEventListener('click', () => setRange(btn.dataset.range));
+            document.querySelectorAll('.range-btn[data-range]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    closeYearMenu();
+                    setRange(btn.dataset.range);
+                });
+            });
+            const yearBtn = document.getElementById('range-years-btn');
+            const yearMenu = document.getElementById('range-years-menu');
+            yearMenu.innerHTML = Array.from({ length: 20 }, (_, i) => {
+                const n = i + 1;
+                return `<button type="button" role="option" data-years="${n}">${yearSpanLabel(n)}</button>`;
+            }).join('');
+            yearBtn.addEventListener('click', () => {
+                const open = yearMenu.hidden;
+                yearMenu.hidden = !open;
+                yearBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+            yearMenu.addEventListener('click', (e) => {
+                const item = e.target.closest('button[data-years]');
+                if (!item) return;
+                const n = Number(item.dataset.years);
+                if (n >= 1 && n <= 20) setRange(n + 'y');
+                closeYearMenu();
+            });
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.range-year')) closeYearMenu();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeYearMenu();
             });
             const fromEl = document.getElementById('range-from');
             const toEl = document.getElementById('range-to');
             const onCustom = () => {
                 activeRange = 'custom';
                 document.querySelectorAll('.range-btn').forEach((b) => b.classList.remove('active'));
+                syncYearSelect('custom');
                 barsByCode = {};
                 drawCharts();
             };
