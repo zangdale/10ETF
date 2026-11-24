@@ -41,6 +41,8 @@
             --teal: #3b8a8a;
             --good: #4caf50;
             --bad: #f44336;
+            --market-up: var(--bad);
+            --market-down: var(--good);
             --text-primary: #e8edf5;
             --text-secondary: #8896ab;
             --text-dim: #5a6678;
@@ -239,8 +241,16 @@
             font-weight: 700;
             color: var(--text-primary);
         }
-        .stat-card .value.pos { color: var(--good); }
-        .stat-card .value.neg { color: var(--bad); }
+        .stat-card .value.pos,
+        .topnav-chip span.val.pos { color: var(--market-up); }
+        .stat-card .value.neg,
+        .topnav-chip span.val.neg { color: var(--market-down); }
+        .stat-card .stat-note {
+            margin-top: 4px;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            letter-spacing: 0.02em;
+        }
         .chart-box {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -406,7 +416,7 @@
             <div class="panel-head">
                 <span class="accent-line" aria-hidden="true"></span>
                 <h2 class="panel-title">组合定投回测</h2>
-                <span class="panel-sub">基于 kline/ 日 K 收盘价 · 各 ETF 独立起始资金 / 定投周期 / 每期金额 · 除息现金分红另计</span>
+                <span class="panel-sub">基于 kline/ 日 K 收盘价 · 各 ETF 独立起始资金 / 定投周期 / 每期金额 · 总盈利 = 持仓盈利 + 现金分红（分红不复投）</span>
             </div>
             <p id="bt-empty" class="state-msg" hidden>暂无 K 线数据，请先执行 make kline。</p>
             <div id="bt-main" hidden>
@@ -449,11 +459,13 @@
                         <div class="metrics-grid" id="metrics-grid">
                             <div class="stat-card"><h3>累计投入</h3><div class="value mono" id="m-invested">—</div></div>
                             <div class="stat-card"><h3>期末市值</h3><div class="value mono" id="m-value">—</div></div>
-                            <div class="stat-card"><h3>总收益率</h3><div class="value mono" id="m-return">—</div></div>
+                            <div class="stat-card"><h3>持仓盈利</h3><div class="value mono" id="m-pnl">—</div><div class="stat-note">期末市值 − 累计投入</div></div>
+                            <div class="stat-card"><h3>累计分红</h3><div class="value mono" id="m-div">—</div><div class="stat-note">除息现金，不复投</div></div>
+                            <div class="stat-card"><h3>总盈利</h3><div class="value mono" id="m-profit">—</div><div class="stat-note">持仓盈利 + 分红</div></div>
+                            <div class="stat-card"><h3>总收益率</h3><div class="value mono" id="m-return">—</div><div class="stat-note">不含分红</div></div>
                             <div class="stat-card"><h3>年化收益率</h3><div class="value mono" id="m-annual">—</div></div>
                             <div class="stat-card"><h3>最大回撤</h3><div class="value mono" id="m-dd">—</div></div>
                             <div class="stat-card"><h3>定投期数</h3><div class="value mono" id="m-periods">—</div></div>
-                            <div class="stat-card"><h3>累计分红</h3><div class="value mono" id="m-div">—</div></div>
                         </div>
                         <div class="chart-box">
                             <button type="button" class="chart-fs-btn" data-chart="bt-chart" aria-label="全屏查看资金曲线" title="全屏查看">
@@ -499,7 +511,6 @@
     <footer class="site-footer">
         <a href="https://space.bilibili.com/278413353" target="_blank" rel="noopener noreferrer">Bilibili</a>
         <a href="https://github.com/zangdale" target="_blank" rel="noopener noreferrer">GitHub</a>
-        <a href="https://xueqiu.com/10etf" target="_blank" rel="noopener noreferrer">雪球</a>
     </footer>
     <dialog id="chartFsDialog" class="chart-fs-dialog" aria-labelledby="chartFsTitle">
         <div class="chart-fs-bar">
@@ -572,7 +583,9 @@
         let lastInvested = NaN;
         let lastFinalValue = NaN;
         let lastTotalReturn = NaN;
+        let lastPnl = NaN;
         let lastDividend = NaN;
+        let lastProfit = NaN;
         let klineCache = {};
 
         function codesFromHold(payload) {
@@ -858,11 +871,22 @@
                 btn.classList.toggle('active', btn.dataset.group === numGroup);
             });
         }
+        function signedClass(n) {
+            if (!Number.isFinite(n) || n === 0) return '';
+            return n > 0 ? 'pos' : 'neg';
+        }
+        function setSigned(id, text, n) {
+            const el = document.getElementById(id);
+            el.textContent = text;
+            el.className = 'value mono' + (signedClass(n) ? ' ' + signedClass(n) : '');
+        }
         function refreshMoneyDisplays() {
             if (!Number.isFinite(lastInvested)) return;
             document.getElementById('m-invested').textContent = money(lastInvested);
             document.getElementById('m-value').textContent = money(lastFinalValue);
-            document.getElementById('m-div').textContent = money(lastDividend);
+            setSigned('m-pnl', money(lastPnl), lastPnl);
+            setSigned('m-div', money(lastDividend), lastDividend);
+            setSigned('m-profit', money(lastProfit), lastProfit);
         }
         function bindNumToggle() {
             syncNumToggle();
@@ -881,7 +905,12 @@
             const rangeEl = document.getElementById('nav-range');
             const retEl = document.getElementById('nav-return');
             if (rangeEl) rangeEl.textContent = from && to ? `${from} ~ ${to}` : '—';
-            if (retEl) retEl.textContent = pct(totalReturn);
+            if (retEl) {
+                retEl.textContent = pct(totalReturn);
+                retEl.classList.remove('pos', 'neg');
+                const cls = signedClass(totalReturn);
+                if (cls) retEl.classList.add(cls);
+            }
         }
         function pct(n) {
             if (!Number.isFinite(n)) return '—';
@@ -1287,7 +1316,9 @@
             const portfolioReturn = calcReturnSeries(portfolioValues, investedSeries);
 
             const finalValue = portfolioValues[portfolioValues.length - 1] || 0;
-            const totalReturn = invested > 0 ? ((finalValue - invested) / invested) * 100 : NaN;
+            const pnl = finalValue - invested;
+            const profit = pnl + totalDiv;
+            const totalReturn = invested > 0 ? (pnl / invested) * 100 : NaN;
             const daySpan = Math.max(1, (new Date(to) - new Date(from)) / 86400000);
             const annual = annualizedReturn(totalReturn, daySpan);
             const mdd = maxDrawdown(portfolioValues);
@@ -1295,18 +1326,20 @@
             lastInvested = invested;
             lastFinalValue = finalValue;
             lastTotalReturn = totalReturn;
+            lastPnl = pnl;
             lastDividend = totalDiv;
+            lastProfit = profit;
             document.getElementById('m-invested').textContent = money(invested);
             document.getElementById('m-value').textContent = money(finalValue);
-            document.getElementById('m-div').textContent = money(totalDiv);
+            setSigned('m-pnl', money(pnl), pnl);
+            setSigned('m-div', money(totalDiv), totalDiv);
+            setSigned('m-profit', money(profit), profit);
             updateNavMeta(from, to, totalReturn);
-            const retEl = document.getElementById('m-return');
-            retEl.textContent = pct(totalReturn);
-            retEl.className = 'value mono ' + (totalReturn >= 0 ? 'pos' : 'neg');
-            const annEl = document.getElementById('m-annual');
-            annEl.textContent = pct(annual);
-            annEl.className = 'value mono ' + (annual >= 0 ? 'pos' : 'neg');
-            document.getElementById('m-dd').textContent = pct(-mdd);
+            setSigned('m-return', pct(totalReturn), totalReturn);
+            setSigned('m-annual', pct(annual), annual);
+            const ddEl = document.getElementById('m-dd');
+            ddEl.textContent = pct(-mdd);
+            ddEl.className = 'value mono' + (mdd > 0 ? ' neg' : '');
             document.getElementById('m-periods').textContent = String(periods);
 
             const fundDatasets = [
